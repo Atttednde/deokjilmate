@@ -12,3 +12,6 @@ yarn.lock
 
 apiserviceAccountKey.json
 webtoon_serviceAccountKey.json
+
+firebase-admin-config.js
+firebase-config.js
