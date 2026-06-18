@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>로그인 — 덕질메이트</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  body { margin: 0; height: 100vh; display: flex; background-color: white;}
+
+  /* 왼쪽 배너 */
+  .banner {
+    flex: 1;
+    background: #b8bfca;
+    display: flex;
+    align-items: flex-end;
+    padding: 52px;
+  }
+  @media (max-width: 768px) {
+    .banner { display: none; }
+  }
+
+  .banner-text {
+    font-size: 56px;
+    font-weight: 900;
+    line-height: 1.15;
+    letter-spacing: -2px;
+    color: var(--text-main);
+  }
+
+  .banner-text .highlight {
+    display: inline-block;
+    background: var(--navy-dark);
+    color: #fff;
+    padding: 2px 10px;
+    border-radius: 6px;
+    margin-right: 6px;
+  }
+
+  /* 오른쪽 폼 */
+  .login-panel {
+    width: 480px;
+    flex-shrink: 0;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    padding: 40px 56px;
+    position: relative;
+  }
+
+  .back-link {
+    position: absolute;
+    top: 28px;
+    right: 40px;
+    font-size: 15px;
+    color: var(--text-sub);
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .back-link:hover { color: var(--text-main); }
+
+  .login-panel h1 {
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+    margin-bottom: 40px;
+    margin-top: 60px;
+  }
+
+  .form-group { margin-bottom: 14px; }
+
+  .form-group input {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+    color: var(--text-main);
+  }
+
+  .form-group input:focus { border-color: var(--navy); }
+  .form-group input::placeholder { color: var(--text-light); }
+
+  .login-btn-main {
+    width: 100%;
+    background: var(--navy);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 15px;
+    font-size: 16px;
+    font-family: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: background 0.15s;
+  }
+
+  .login-btn-main:hover { background: var(--navy-dark); }
+
+  .signup-link {
+    display: block;
+    text-align: center;
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--text-sub);
+    text-decoration: none;
+  }
+
+  .signup-link:hover { color: var(--text-main); text-decoration: underline; }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 24px 0;
+  }
+
+  .divider hr { flex: 1; border: none; border-top: 1px solid var(--border); }
+  .divider span { font-size: 13px; color: var(--text-light); white-space: nowrap; }
+
+  .google-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    font-size: 15px;
+    font-family: inherit;
+    background: #fff;
+    cursor: pointer;
+    color: var(--text-main);
+    transition: background 0.15s;
+  }
+
+  .google-btn:hover { background: var(--bg); }
+
+  .google-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-sub);
+  }
+
+  /* 에러 메시지 */
+  .error-msg {
+    color: #e53e3e;
+    font-size: 13px;
+    margin-top: 6px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<!-- 왼쪽 배너 -->
+<div class="banner">
+  <div class="banner-text">
+    <span class="highlight">덕질메이트</span>에<br>환영합니다!
+  </div>
+</div>
+
+<!-- 오른쪽 로그인 폼 -->
+<div class="login-panel">
+  <a class="back-link" href="index.html">돌아가기</a>
+
+  <h1>로그인하기</h1>
+
+  <div class="form-group">
+    <input type="text" id="username" placeholder="이메일 입력" onkeydown="handleKey(event)">
+  </div>
+  <div class="form-group">
+    <input type="password" id="password" placeholder="비밀번호 입력" onkeydown="handleKey(event)">
+  </div>
+  <p class="error-msg" id="error-msg">이메일 또는 비밀번호를 확인해주세요.</p>
+
+  <button class="login-btn-main" id="login-btn" onclick="doLogin()">로그인</button>
+  <a class="signup-link" href="signup.html">회원가입</a>
+
+  <div class="divider">
+    <hr><span>구글 계정으로 로그인</span><hr>
+    <div class="google-icon" id="google-btn" style="cursor:pointer;" onclick="doGoogleLogin()">G</div>
+  </div>
+</div>
+
+<script type="module">
+  import { auth } from './firebase-config.js';
+  import {
+    signInWithEmailAndPassword,
+    GoogleAuthProvider,
+    signInWithPopup,
+    onAuthStateChanged,
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+  /* 이미 로그인 상태면 바로 이동 */
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      const redirect = new URLSearchParams(window.location.search).get('redirect') || 'index.html';
+      window.location.href = redirect;
+    }
+  });
+
+  function setLoading(on) {
+    document.getElementById('login-btn').disabled = on;
+    document.getElementById('login-btn').textContent = on ? '로그인 중...' : '로그인';
+  }
+
+  function showError(msg) {
+    const err = document.getElementById('error-msg');
+    err.style.display = 'block';
+    err.textContent = msg;
+  }
+
+  /* 이메일/비밀번호 로그인 */
+  window.doLogin = async function () {
+    const email = document.getElementById('username').value.trim();
+    const pw    = document.getElementById('password').value.trim();
+    if (!email || !pw) { showError('이메일과 비밀번호를 모두 입력해주세요.'); return; }
+
+    setLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, pw);
+      /* onAuthStateChanged 가 리다이렉트 처리 */
+    } catch (e) {
+      const msgs = {
+        'auth/user-not-found':  '존재하지 않는 계정입니다.',
+        'auth/wrong-password':  '비밀번호가 올바르지 않습니다.',
+        'auth/invalid-email':   '이메일 형식이 올바르지 않습니다.',
+        'auth/too-many-requests': '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.',
+      };
+      showError(msgs[e.code] || '로그인에 실패했습니다. (' + e.code + ')');
+      setLoading(false);
+    }
+  };
+
+  /* 구글 로그인 */
+  window.doGoogleLogin = async function () {
+    try {
+      await signInWithPopup(auth, new GoogleAuthProvider());
+      /* onAuthStateChanged 가 리다이렉트 처리 */
+    } catch (e) {
+      if (e.code !== 'auth/popup-closed-by-user') {
+        showError('구글 로그인에 실패했습니다. (' + e.code + ')');
+      }
+    }
+  };
+
+  /* Enter 키 */
+  window.handleKey = function (e) { if (e.key === 'Enter') window.doLogin(); };
+</script>
+</body>
+</html>

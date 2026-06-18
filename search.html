@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>검색 결과 — 덕질메이트</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  /* ── Hero 2단 배열 및 반응형 처리 ── */
+  .hero-wrapper {
+  position: relative;
+  }
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 360px;
+    position: relative;
+    gap: 20px;
+  }
+
+  .hero-left {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 48px 48px 32px;
+    background: var(--bg);
+    position: relative;
+    z-index: 10;
+  }
+
+  .hero-left h1 {
+    font-size: 38px;
+    font-weight: 900;
+    letter-spacing: -1px;
+    margin-bottom: 28px;
+  }
+
+  /* 검색창 */
+  .search-box { max-width: 440px; width: 100%; }
+
+  /* 태그 검색 패널 (오른쪽) */
+  .hero-right {
+    background: var(--navy);
+    padding: 28px 28px 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .tag-panel {
+    background: rgba(255,255,255,0.96);
+    border-radius: var(--radius);
+    padding: 20px 22px;
+  }
+
+  .tag-panel-title {
+    font-size: 16px;
+    font-weight: 900;
+    margin-bottom: 14px;
+    color: var(--text-main);
+  }
+
+  /* ── 필터 버튼 행 ── */
+  .filter-btns {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .filter-btn {
+    padding: 9px 24px;
+    border-radius: var(--radius-sm);
+    border: none;
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .filter-btn.reset  { background: #d0d4da; color: var(--text-main); }
+  .filter-btn.reset:hover  { background: #bec3cb; }
+  .filter-btn.apply  { background: var(--navy-dark); color: #fff; }
+  .filter-btn.apply:hover  { background: var(--navy-light); }
+
+  /* 카테고리 구조 */
+  .cat-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 6px;
+    overflow: hidden;
+  }
+
+  .cat-label {
+    font-size: 14px;
+    font-weight: 700;
+    width: 42px;
+    flex-shrink: 0;
+    padding-top: 6px;
+    color: var(--text-main);
+  }
+
+  .cat-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    flex: 1;
+    max-height: 36px;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+  }
+
+  .cat-tags.expanded { max-height: 200px; }
+
+  .tag-chip {
+    padding: 5px 14px;
+    border-radius: 20px;
+    border: 1.5px solid #ccc;
+    background: #efefef;
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--text-main);
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .tag-chip:hover { border-color: var(--navy); }
+
+  .tag-chip.selected {
+    background: var(--navy-dark);
+    color: #fff;
+    border-color: var(--navy-dark);
+  }
+
+  .toggle-btn {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    color: var(--text-sub);
+    padding: 2px 4px;
+    line-height: 1;
+    margin-top: 4px;
+    transition: transform 0.2s;
+  }
+
+  .toggle-btn.open { transform: rotate(180deg); }
+
+  /* 캐릭터 & 분위기 연동 확장형 패널 구조 */
+  .custom-dropdown {
+    display: none;
+    background: #fff;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    width: 100%;
+    z-index: 50;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    box-sizing: border-box;
+    
+  }
+
+  .custom-dropdown.open { display: block; }
+  .custom-dropdown .dropdown-label { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+  .dropdown-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  /* ── 작품 그리드 ── */
+  .books-section { padding: 28px 32px; }
+
+ 
+
+  .result-count {
+    font-size: 13px;
+    color: var(--text-sub);
+    margin-bottom: 14px;
+  }
+
+  .selected-summary {
+    font-size: 13px;
+    color: var(--text-sub);
+    margin-bottom: 14px;
+    min-height: 20px;
+  }
+
+  .selected-summary .chip {
+    display: inline-block;
+    background: var(--navy-dark);
+    color: #fff;
+    border-radius: 12px;
+    padding: 2px 10px;
+    font-size: 12px;
+    margin-right: 4px;
+  }
+
+  /* 모바일 화면 대응: 태그 영역이 검색창 밑으로 내려감 */
+  @media (max-width: 768px) {
+    .hero { grid-template-columns: 1fr; min-height: auto; }
+  }
+
+  /* 표지 비율 및 그리드 칼정렬 고정 */
+  .books-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 20px;
+  }
+
+  @media (max-width: 1024px) { .books-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  @media (max-width: 600px) { .books-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+  .book-cover {
+    width: 100%;
+    aspect-ratio: 3/4;
+    background: #d8d5cf;
+    border-radius: var(--radius-sm);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .book-cover img { width: 100%; height: 100%; object-fit: cover; }
+  
+  .book-card-large {
+    cursor: pointer;
+    transition: transform 0.2s;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+  .book-card-large:hover { transform: translateY(-4px); }
+  .book-cover svg { opacity: 0.4; }
+
+  .book-card-large .genre  { font-size: 11px; color: var(--text-light); margin-bottom: 3px; }
+  .book-card-large .title  { font-size: 14px; font-weight: 700; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .book-card-large .author { font-size: 12px; color: var(--text-sub); }
+
+  /* ── No results ── */
+  .no-results {
+    padding: 80px 32px;
+    text-align: center;
+    color: var(--text-sub);
+    font-size: 16px;
+    grid-column: 1 / -1;
+  }
+  .no-results strong { display: block; font-size: 22px; font-weight: 900; color: var(--text-main); margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="index.html">덕질메이트</a>
+  <div class="nav-links">
+    <a href="index.html" class="active">검색</a>
+    <a href="booklist.html">독서목록</a>
+    <a href="diary.html">독서록</a>
+    <a href="myreviews.html">내가 남긴 후기</a>
+    <span id="nav-auth"></span>
+  </div>
+</nav>
+
+<div class="tab-bar">
+  <button onclick="location.href='index.html'">추천</button>
+  <button onclick="location.href='search_webtoon.html'">웹툰</button>
+  <button class="active" onclick="switchTab(this)">웹소설</button>
+</div>
+
+<div class="hero-wrapper">
+  <div class="hero">
+    <div class="hero-left">
+      <h1>작품을 검색하세요</h1>
+      <div class="search-box">
+        <input type="text" id="search-input" placeholder="작품을 검색하세요" onkeydown="handleKey(event)">
+        <button class="search-btn" onclick="doSearch()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="hero-right">
+      <div class="tag-panel">
+        <div class="tag-panel-title">소설 태그 검색</div>
+        <div class="cat-row">
+          <span class="cat-label">장르</span>
+          <div class="cat-tags" id="cat-genre"></div>
+          <button class="toggle-btn" onclick="toggleCat('genre',this)">∨</button>
+        </div>
+        <div class="cat-row">
+          <span class="cat-label">배경</span>
+          <div class="cat-tags" id="cat-setting"></div>
+          <button class="toggle-btn" onclick="toggleCat('setting',this)">∨</button>
+        </div>
+        <div class="cat-row">
+          <span class="cat-label">인물</span>
+          <div class="cat-tags" id="cat-character-preview" style="pointer-events:none;opacity:0.6;"></div>
+          <button class="toggle-btn" id="character-toggle-btn" onclick="toggleCustomDropdown('character')">∨</button>
+        </div>
+        <div class="cat-row">
+          <span class="cat-label">분위기</span>
+          <div class="cat-tags" id="cat-mood-preview" style="pointer-events:none;opacity:0.6;"></div>
+          <button class="toggle-btn" id="mood-toggle-btn" onclick="toggleCustomDropdown('mood')">∨</button>
+        </div>
+        <div class="filter-btns">
+          <button class="filter-btn reset" onclick="resetFilters()">해제</button>
+          <button class="filter-btn apply" onclick="applyFilter()">필터링 하기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 드롭다운: hero-wrapper 안, hero 아래 -->
+  <div class="custom-dropdown" id="character-dropdown">
+    <div class="dropdown-label">인물 조건 선택</div>
+    <div class="dropdown-tags" id="dropdown-character-tags"></div>
+  </div>
+  <div class="custom-dropdown" id="mood-dropdown">
+    <div class="dropdown-label">분위기 조건 선택</div>
+    <div class="dropdown-tags" id="dropdown-mood-tags"></div>
+  </div>
+</div>
+ 
+
+<div class="books-section">
+  <div class="result-count" id="result-count"></div>
+  <div class="selected-summary" id="selected-summary"></div>
+  <div class="books-grid" id="books-grid"></div>
+</div>
+ 
+
+<script type="module">
+  import { onAuthReady, logout } from './auth.js';
+  import { BOOK_SVG_LG, fetchBooks } from './data.js';
+
+  /* ── nav ── */
+  onAuthReady((user) => {
+    const el = document.getElementById('nav-auth');
+    if (user) {
+      el.innerHTML = `
+        <span style="font-size:15px;font-weight:700;padding:7px 12px;cursor:default;">
+          @${user.displayName || user.email}님
+        </span>
+        <button onclick="window._logout()"
+          style="background:#d0d4da;border:none;border-radius:6px;padding:7px 12px;
+                 font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;">
+          로그아웃
+        </button>`;
+      window._logout = logout;
+    } else {
+      el.innerHTML = `<a href="login.html" class="login-btn"
+        style="font-size:16px;font-weight:700;padding:7px 18px;">로그인</a>`;
+    }
+  });
+
+  window.switchTab = function(btn) {
+    document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  };
+
+  window.handleKey = function(e) { if (e.key === 'Enter') window.doSearch(); };
+  window.doSearch  = function() {
+    const q = document.getElementById('search-input').value.trim();
+    runSearch(q);
+  };
+
+  /* ── 소설 데이터 맞춤 태그 규격 정의 ── */
+  const TAG_DEFS = {
+    genre:     ['로맨스판타지', '로맨틱코미디', '현대로맨스', '퓨전', '게임', '드라마', 'SF', '라이트노벨', '정통', '무협물', '여주판타지', '궁정로맨스', '해외로맨스', '시대/역사로맨스'],
+    setting:   ['동양풍', '명문세가', '정파', '사파', '마교', '화산', '곤륜', '남궁', '표국', '객잔무협', '선계', '아포칼립스', '탑등반', '영지', '학원', '학원물', '가상시대물', '중세물', '퓨전사극', '삼국지'],
+    character: ['성장', '천재', '노력', '먼치킨', '능력녀', '능력남', '왕족/귀족', '걸크러쉬', '다정남', '외유내강', '순정남', '사이다녀', '카리스마남', '조력자', '마법사', '엉뚱발랄녀', '계략남', '상처남', '전문직', '직진남', '집착남', '고인물', '상처녀', '다정녀', '도사', '순진녀', '협객', '절륜남', '직진녀', '재벌', '재벌남', '재벌녀', '능글남', '뇌섹녀', '시한부', '회사원', '만능', '검사', '외국인남/혼혈', '츤데레남', '유혹남', '군인', '후회남', '계략녀', '우월녀', '짝사랑남', '지존', '사이다남', '냉정남', '까칠남', '무심녀', '존댓말남', '가수', '망나니', '배우', '천마', '살수', '낭인', '오만남', '초월적존재', '유혹녀', '도도녀', '냉정녀', '자상녀', '털털녀', '책사', '상인', '마왕', '성직자', '애교녀', '나쁜남자', '순정녀', '짝사랑녀', '철벽녀', '법조인', '철벽남', '대형견남', '학사', '정치가', '조신남', '감독/스카우터', '무당', '마검사', '대장장이/생산직', '운동선수', '의사', '용사', '네크로맨서', '평범녀', '악녀', '후회녀'],
+    mood:      ['회귀', '복수', '검', '소유욕/독점욕', '생존', '시스템', '빙의', '성장물', '권선징악', '환생', '회귀물', '달달물', '이능력', '복수물', '갑을관계', '경영/기업', '빙의물', '깽판', '스포츠', '첫사랑', '힐링물', '육아물', '전쟁', '차원이동', '운명', '친구>연인', '계약관계', '귀환', '몸정>맘정', '권', '신분차이', '소꿉친구', '잔잔물', '야구', '착각', '라이벌/앙숙', '신파', '가족물', '정략결혼', '육아', '레이드', '술법', '우연한만남', '오빠', '축구', '총', '나이차커플', '오해물', '영웅/신화', '기억상실', '영혼체인지', '타임슬립', '독', '초능력', '경쟁구도', '동거물', '역하렘', '하렘', '쌍방삽질', '방송', '신', '환생물', '재회물', '창', '베이비메신저', '사내연애', '절륜녀', '착각물', '피폐물', '오래된연인', '사제지간', '삼각관계', '메디컬', '가족후회물', '먹방/요리', '테이밍', '시월드', '짝사랑', '아티팩트', '배틀연애'],
+  };
+
+  const selectedTags = new Set();
+  let activeDropdown = null; 
+
+  /* ── 태그 인터페이스 빌더 ── */
+  function buildCat(catId, tags) {
+    const el = document.getElementById('cat-' + catId);
+    if(!el) return;
+    el.innerHTML = tags.map(t => `
+      <button class="tag-chip ${selectedTags.has(t) ? 'selected' : ''}"
+              onclick="window.toggleTag('${t}', this)">${t}</button>`).join('');
+  }
+
+  // 캐릭터 및 분위기 특수 독립 드롭다운 렌더러
+  function buildCustomDropdown(type) {
+    const container = document.getElementById(`dropdown-${type}-tags`);
+    const previewContainer = document.getElementById(`cat-${type}-preview`);
+    if(!container || !previewContainer) return;
+
+    container.innerHTML = TAG_DEFS[type].map(t => `
+      <button class="tag-chip ${selectedTags.has(t) ? 'selected' : ''}"
+              onclick="window.toggleTag('${t}', this, '${type}')">${t}</button>`).join('');
+
+    const selected = TAG_DEFS[type].filter(t => selectedTags.has(t));
+    previewContainer.innerHTML = selected.slice(0, 2).map(t => `
+      <button class="tag-chip selected" style="padding:2px 8px; font-size:11px;">${t}</button>`).join('');
+  }
+
+  function renderTagUI() {
+    buildCat('genre', TAG_DEFS.genre);
+    buildCat('setting', TAG_DEFS.setting);
+    buildCustomDropdown('character');
+    buildCustomDropdown('mood');
+  }
+
+  /* ── 윈도우 전역 함수 매핑 및 필터 연동 ── */
+  window.toggleTag = function(tag, btn, parentType = null) {
+    if (selectedTags.has(tag)) {
+      selectedTags.delete(tag);
+      btn.classList.remove('selected');
+    } else {
+      selectedTags.add(tag);
+      btn.classList.add('selected');
+    }
+    if (parentType) {
+      buildCustomDropdown(parentType);
+    }
+    
+  };
+
+  window.toggleCat = function(catId, btn) {
+    document.getElementById('cat-' + catId).classList.toggle('expanded');
+    btn.classList.toggle('open');
+  };
+
+  // 캐릭터 / 분위기 독립 스위칭형 드롭다운 토글 기능
+  window.toggleCustomDropdown = function(type) {
+    const targets = ['character', 'mood'];
+    targets.forEach(t => {
+      const dp = document.getElementById(`${t}-dropdown`);
+      const btn = document.getElementById(`${t}-toggle-btn`);
+      if (t === type && activeDropdown !== type) {
+        dp.classList.add('open');
+        btn.classList.add('open');
+      } else {
+        dp.classList.remove('open');
+        btn.classList.remove('open');
+      }
+    });
+    activeDropdown = activeDropdown === type ? null : type;
+  };
+
+  // 필터 초기화 버튼을 누를 때도 전체 조회를 하지 않도록 수정합니다.
+  window.resetFilters = async function() {
+    selectedTags.clear();
+    activeDropdown = null;
+    document.querySelectorAll('.custom-dropdown').forEach(d => d.classList.remove('open'));
+    document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('open'));
+    document.getElementById('search-input').value = ''; // 검색창도 비워줌
+    
+    renderTagUI();
+    updateSummary();
+    
+    // 💡 초기화 시 전체 조회를 하지 않고 대기 화면으로 전환
+    const grid = document.getElementById('books-grid');
+    grid.innerHTML = `
+      <div class="no-results" style="grid-column: 1 / -1; padding: 60px 0;">
+        <strong>원하는 작품을 찾아보세요!</strong>
+        검색어를 입력하거나 우측에서 태그를 선택한 후 필터링을 진행해주세요.
+      </div>`;
+     
+    document.getElementById('result-count').textContent = '검색 전입니다.';
+  };
+
+  window.applyFilter = async function() {
+    const q = document.getElementById('search-input').value.trim();
+    updateSummary();
+    await runSearch(q);
+  };
+
+  function updateSummary() {
+    const el = document.getElementById('selected-summary');
+    if (!selectedTags.size) { el.innerHTML = ''; return; }
+    el.innerHTML = '선택한 태그: ' + [...selectedTags].map(t => `<span class="chip">${t}</span>`).join('');
+  }
+
+  // 검색 결과 렌더링 함수
+  async function runSearch(q = '') {
+    const grid = document.getElementById('books-grid');
+    grid.innerHTML = '<p style="color:var(--text-sub);grid-column:1/-1;padding:40px 0;">검색 중...</p>';
+    try {
+      const books = await fetchBooks({ 
+        query: q, 
+        tags: [...selectedTags],
+        collectionName: 'books' 
+      });
+
+       
+      document.getElementById('result-count').textContent = `총 ${books.length}건`;
+
+      if (!books.length) {
+        grid.innerHTML = `<div class="no-results"><strong>검색 결과가 없습니다</strong>다른 키워드나 태그로 검색해보세요.</div>`;
+        return;
+      }
+
+      grid.innerHTML = books.map(b => `
+        <a class="book-card-large" href="detail.html?id=${b.id}&from=search&q=${encodeURIComponent(q)}&tags=${encodeURIComponent([...selectedTags].join(','))}">
+          <div class="book-cover">
+            ${b.thumbnail ? `<img src="${b.thumbnail}">` : BOOK_SVG_LG}
+          </div>
+          <div class="genre">${b.genre || '웹소설'}</div>
+          <div class="title">${b.title || ''}</div>
+          <div class="author">${b.author || ''}</div>
+        </a>`).join('');
+    } catch(e) {
+      grid.innerHTML = '<p style="color:var(--text-sub);grid-column:1/-1;padding:40px 0;">작품을 불러오지 못했습니다.</p>';
+      console.error(e);
+    }
+  }
+
+  // 초기 로더 맵핑
+  async function init() {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get('q') || '';
+    const restoredTags = params.get('tags');
+    
+    if (restoredTags) {
+      restoredTags.split(',').filter(Boolean).forEach(t => selectedTags.add(t));
+    }
+    
+    // 사용자가 입력창에 무엇을 검색했는지 유지해줍니다.
+    document.getElementById('search-input').value = q;
+    
+    renderTagUI();
+    updateSummary();
+
+    // 💡 변경 핵심: 검색어(q)가 있거나 선택된 태그가 있을 때만 Firestore에 요청합니다.
+    if (q.trim() !== '' || selectedTags.size > 0) {
+      await runSearch(q);
+    } else {
+      // 초기 상태에서는 아무것도 읽지 않고 안내 메시지만 보여줍니다.
+      const grid = document.getElementById('books-grid');
+      grid.innerHTML = `
+        <div class="no-results" style="grid-column: 1 / -1; padding: 60px 0;">
+          <strong>원하는 작품을 찾아보세요!</strong>
+          검색어를 입력하거나 우측에서 태그를 선택한 후 필터링을 진행해주세요.
+        </div>`;
+      document.getElementById('query-title').textContent = '작품 검색';
+      document.getElementById('result-count').textContent = '검색 전입니다.';
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>

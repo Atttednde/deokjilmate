@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>회원가입 — 덕질메이트</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  body { margin: 0; min-height: 100vh; display: flex; background-color: white; }
+
+  /* 왼쪽 배너 */
+  .banner {
+    flex: 1;
+    background: #b8bfca;
+    display: flex;
+    align-items: flex-start;
+    padding: 52px;
+  }
+  @media (max-width: 768px) {
+    .banner { display: none; }
+  }
+
+  .banner-text {
+    font-size: 56px;
+    font-weight: 900;
+    line-height: 1.15;
+    letter-spacing: -2px;
+    color: var(--text-main);
+  }
+
+  .banner-text .highlight {
+    display: inline-block;
+    background: var(--navy-dark);
+    color: #fff;
+    padding: 2px 10px;
+    border-radius: 6px;
+    margin-right: 6px;
+  }
+
+  /* 오른쪽 폼 */
+  .signup-panel {
+    width: 480px;
+    flex-shrink: 0;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    padding: 36px 56px 48px;
+    position: relative;
+    overflow-y: auto;
+  }
+
+  .back-link {
+    position: absolute;
+    top: 28px;
+    right: 40px;
+    font-size: 15px;
+    color: var(--text-sub);
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .back-link:hover { color: var(--text-main); }
+
+  .signup-panel h1 {
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+    margin-top: 28px;
+    padding-bottom: 14px;
+    border-bottom: 2px solid var(--text-main);
+  }
+
+  /* 필드 그룹 */
+  .field-group { margin-top: 24px; }
+
+  .field-label {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .field-label .hint {
+    font-size: 12px;
+    color: var(--text-light);
+    font-weight: 400;
+  }
+
+  .field-input {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 13px 16px;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+    color: var(--text-main);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+
+  .field-input:focus { border-color: var(--navy); }
+  .field-input::placeholder { color: var(--text-light); }
+
+  .field-input:last-of-type { margin-bottom: 0; }
+
+  /* 중복확인 버튼 */
+  .check-btn {
+    width: 100%;
+    background: #d0d4da;
+    color: var(--text-main);
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    margin-bottom: 0;
+  }
+
+  .check-btn:hover { background: #bec3cb; }
+  .check-btn.confirmed { background: #c8e6c9; color: #2e7d32; }
+
+  /* 유효성 메시지 */
+  .field-msg {
+    font-size: 12px;
+    margin-top: 5px;
+    min-height: 16px;
+  }
+
+  .field-msg.error { color: #e53e3e; }
+  .field-msg.ok    { color: #2e7d32; }
+
+  /* 하단 버튼 */
+  .btn-area { margin-top: 32px; display: flex; flex-direction: column; gap: 10px; }
+
+  .big-btn {
+    width: 100%;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 15px;
+    font-size: 16px;
+    font-family: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .big-btn.cancel { background: #d0d4da; color: var(--text-main); }
+  .big-btn.cancel:hover { background: #bec3cb; }
+  .big-btn.submit { background: var(--navy); color: #fff; }
+  .big-btn.submit:hover { background: var(--navy-dark); }
+  .big-btn.submit:disabled { background: #a0aab4; cursor: not-allowed; }
+</style>
+</head>
+<body>
+
+<!-- 왼쪽 배너 -->
+<div class="banner">
+  <div class="banner-text">
+    <span class="highlight">덕질메이트</span>에<br>환영합니다!
+  </div>
+</div>
+
+<!-- 오른쪽 회원가입 폼 -->
+<div class="signup-panel">
+  <a class="back-link" href="login.html">돌아가기</a>
+
+  <h1>회원가입</h1>
+
+  <!-- 이메일 -->
+  <div class="field-group">
+    <div class="field-label">이메일</div>
+    <input class="field-input" type="text" id="reg-id" placeholder="이메일 입력" oninput="resetIdCheck()">
+    <button class="check-btn" id="check-btn" onclick="checkDuplicate()">중복확인</button>
+    <div class="field-msg" id="id-msg"></div>
+  </div>
+
+  <!-- 비밀번호 -->
+  <div class="field-group">
+    <div class="field-label">
+      비밀번호
+      <span class="hint">*9자리 이상</span>
+    </div>
+    <input class="field-input" type="password" id="reg-pw"  placeholder="비밀번호 입력"   oninput="validatePw()">
+    <input class="field-input" type="password" id="reg-pw2" placeholder="비밀번호 재확인" oninput="validatePw2()">
+    <div class="field-msg" id="pw-msg"></div>
+  </div>
+
+  <!-- 전화번호 -->
+  <div class="field-group">
+    <div class="field-label">전화번호</div>
+    <input class="field-input" type="tel" id="reg-phone" placeholder="전화번호 입력" oninput="formatPhone(this)">
+    <div class="field-msg" id="phone-msg"></div>
+  </div>
+
+  <!-- 닉네임 -->
+  <div class="field-group">
+    <div class="field-label">닉네임</div>
+    <input class="field-input" type="text" id="reg-nick" placeholder="닉네임 입력">
+    <div class="field-msg" id="nick-msg"></div>
+  </div>
+
+  <!-- 버튼 -->
+  <div class="btn-area">
+    <button class="big-btn cancel" onclick="location.href='login.html'">가입 취소</button>
+    <button class="big-btn submit" id="submit-btn" onclick="doSignup()">회원가입</button>
+  </div>
+</div>
+
+<script type="module">
+  import { auth, db } from './firebase-config.js';
+  import {
+    createUserWithEmailAndPassword,
+    updateProfile,
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { doc, setDoc, serverTimestamp, collection, query, where, getDocs }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  window.formatPhone = function(input) {
+    let v = input.value.replace(/\D/g, '');
+    if (v.length <= 3) input.value = v;
+    else if (v.length <= 7) input.value = v.slice(0,3) + '-' + v.slice(3);
+    else input.value = v.slice(0,3) + '-' + v.slice(3,7) + '-' + v.slice(7,11);
+  };
+
+  let emailChecked = false;
+  let checkedEmail = '';
+
+  window.resetIdCheck = function() {
+    emailChecked = false;
+    checkedEmail = '';
+    const btn = document.getElementById('check-btn');
+    btn.classList.remove('confirmed');
+    btn.textContent = '중복확인';
+    document.getElementById('id-msg').textContent = '';
+    document.getElementById('id-msg').className = 'field-msg';
+  };
+
+  window.checkDuplicate = async function() {
+    const email = document.getElementById('reg-id').value.trim();
+    const msg   = document.getElementById('id-msg');
+    const btn   = document.getElementById('check-btn');
+    const re    = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!email) { msg.textContent = '이메일을 입력해주세요.'; msg.className = 'field-msg error'; return; }
+    if (!re.test(email)) { msg.textContent = '올바른 이메일 형식이 아닙니다.'; msg.className = 'field-msg error'; return; }
+
+    btn.disabled = true;
+    btn.textContent = '확인 중...';
+
+    try {
+      const q = query(collection(db, 'users'), where('email', '==', email));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        msg.textContent = '이미 가입된 이메일입니다.';
+        msg.className = 'field-msg error';
+        emailChecked = false;
+        checkedEmail = '';
+        btn.textContent = '중복확인';
+        return;
+      }
+      emailChecked = true;
+      checkedEmail = email;
+      msg.textContent = '사용 가능한 이메일입니다.';
+      msg.className = 'field-msg ok';
+      btn.classList.add('confirmed');
+      btn.textContent = '확인 완료';
+    } catch (e) {
+      msg.textContent = '확인 중 오류가 발생했습니다. 다시 시도해주세요.';
+      msg.className = 'field-msg error';
+      btn.textContent = '중복확인';
+    } finally {
+      btn.disabled = false;
+    }
+  };
+
+  window.validatePw = function() {
+    const pw  = document.getElementById('reg-pw').value;
+    const msg = document.getElementById('pw-msg');
+    if (pw && pw.length < 9) { msg.textContent = '비밀번호는 9자리 이상이어야 합니다.'; msg.className = 'field-msg error'; }
+    else { msg.textContent = ''; }
+    window.validatePw2();
+  };
+
+  window.validatePw2 = function() {
+    const pw  = document.getElementById('reg-pw').value;
+    const pw2 = document.getElementById('reg-pw2').value;
+    const msg = document.getElementById('pw-msg');
+    if (pw2 && pw !== pw2) { msg.textContent = '비밀번호가 일치하지 않습니다.'; msg.className = 'field-msg error'; }
+    else if (pw2 && pw === pw2 && pw.length >= 9) { msg.textContent = '비밀번호가 일치합니다.'; msg.className = 'field-msg ok'; }
+  };
+
+  window.doSignup = async function() {
+    const email = document.getElementById('reg-id').value.trim();
+    const pw    = document.getElementById('reg-pw').value;
+    const pw2   = document.getElementById('reg-pw2').value;
+    const phone = document.getElementById('reg-phone').value.trim();
+    const nick  = document.getElementById('reg-nick').value.trim();
+    const btn   = document.getElementById('submit-btn');
+
+    if (!emailChecked || email !== checkedEmail) { alert('이메일 중복확인을 다시 해주세요.'); return; }
+    if (pw.length < 9)  { alert('비밀번호는 9자리 이상이어야 합니다.'); return; }
+    if (pw !== pw2)     { alert('비밀번호가 일치하지 않습니다.'); return; }
+    if (!/^\d{3}-\d{3,4}-\d{4}$/.test(phone)) { alert('전화번호를 올바르게 입력해주세요.'); return; }
+    if (!nick)          { alert('닉네임을 입력해주세요.'); return; }
+
+    btn.disabled = true; btn.textContent = '처리 중...';
+    try {
+      const { user } = await createUserWithEmailAndPassword(auth, email, pw);
+      await updateProfile(user, { displayName: nick });
+      await setDoc(doc(db, 'users', user.uid), {
+        uid: user.uid, email, nickname: nick, phone, createdAt: serverTimestamp(),
+      });
+      alert(nick + '님, 가입을 환영합니다!');
+      window.location.href = 'login.html';
+    } catch (e) {
+      const msgs = {
+        'auth/email-already-in-use': '이미 사용 중인 이메일입니다.',
+        'auth/invalid-email':        '이메일 형식이 올바르지 않습니다.',
+        'auth/weak-password':        '비밀번호가 너무 약합니다.',
+      };
+      alert(msgs[e.code] || '회원가입 실패: ' + e.code);
+      btn.disabled = false; btn.textContent = '회원가입';
+    }
+  };
+</script>
+</body>
+</html>

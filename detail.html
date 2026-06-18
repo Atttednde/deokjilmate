@@ -1,0 +1,493 @@
+ <!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>작품 상세 — 덕질메이트</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  /* ── Detail page layout ── */
+  .detail-page { padding: 32px; }
+
+  .detail-back-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 20px;
+  }
+
+  .back-btn {
+    background: var(--navy-dark);
+    color: #fff;
+    border: none;
+    padding: 10px 22px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  .back-btn:hover { background: var(--navy-light); }
+
+  .rating-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .rating-score {
+    font-size: 28px;
+    font-weight: 900;
+  }
+
+  .detail-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 36px;
+  }
+
+  /* Left */
+  .detail-cover {
+    width: 100%;
+    aspect-ratio: 3/4;
+    background: #d8d5cf;
+    border-radius: var(--radius);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .detail-title  { font-size: 22px; font-weight: 900; margin-bottom: 4px; }
+  .detail-author { font-size: 14px; color: var(--text-sub); margin-bottom: 14px; }
+
+  .tags-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  
+  /* 태그 */
+  .platform-tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .tag.green  { background: #2e7d32; color: #fff; }
+  .tag.yellow { background: #fdd835; color: #000; }
+  .tag.blue   { background: #1565c0; color: #fff; }
+  .tag.black  { background: #212121; color: #fff; }
+
+  /* Right – review input */
+  .review-input-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+
+  .star-input-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .star-input-label {
+    font-size: 15px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .interactive-stars { display: flex; gap: 4px; }
+
+  .i-star {
+    cursor: pointer;
+    transition: color 0.1s;
+    color: #ddd;
+    font-size: 22px;
+    user-select: none;
+  }
+
+  .i-star.lit { color: #f5c518; }
+
+  .btn-row { display: flex; gap: 8px; }
+
+  .action-btn {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 16px;
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: none;
+  }
+
+  .action-btn.cancel:hover { background: var(--bg); }
+
+  .action-btn.submit {
+    background: var(--navy-dark);
+    color: #fff;
+    border-color: var(--navy-dark);
+  }
+
+  .action-btn.submit:hover { background: var(--navy-light); }
+
+  .review-textarea {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 120px;
+    outline: none;
+    color: var(--text-main);
+    background: var(--bg);
+    transition: border-color 0.2s;
+  }
+
+  .review-textarea:focus { border-color: var(--navy); }
+
+  /* Sort tabs */
+  .sort-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+
+  .sort-tab {
+    padding: 8px 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text-sub);
+    transition: all 0.15s;
+  }
+
+  .sort-tab.active {
+    background: var(--navy-dark);
+    color: #fff;
+    border-color: var(--navy-dark);
+  }
+
+  /* Review list */
+  .review-list { display: flex; flex-direction: column; gap: 12px; }
+
+  .review-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+  }
+
+  .review-item .stars { margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="logo" href="index.html">덕질메이트</a>
+  <div class="nav-links">
+    <a href="index.html" class="active">검색</a>
+    <a href="booklist.html">독서목록</a>
+    <a href="diary.html">독서록</a>
+    <a href="myreviews.html">내가 남긴 후기</a>
+    <span id="nav-auth"></span>
+  </div>
+</nav>
+
+<!-- TAB BAR -->
+<div class="tab-bar">
+  <button class="active" onclick="location.href='index.html'">추천</button>
+  <button onclick="location.href='search_webtoon.html'">웹툰</button>
+  <button onclick="location.href='search.html'">웹소설</button>
+</div>
+
+<!-- DETAIL PAGE -->
+<div class="detail-page">
+
+  <!-- 돌아가기 -->
+  <div class="detail-back-row">
+    <a class="back-btn" id="back-btn" href="index.html">돌아가기</a>
+  </div>
+
+  <!-- 별점 요약 -->
+  <div class="rating-row">
+    <div id="rating-stars"></div>
+    <div class="rating-score" id="rating-score"></div>
+  </div>
+
+  <div class="detail-layout">
+
+    <!-- LEFT: 작품 정보 -->
+    <div class="detail-left">
+      <div class="detail-cover"  id="detail-cover"></div>
+      <div class="detail-title"  id="detail-title"></div>
+      <div class="detail-author" id="detail-author"></div>
+      <div class="tags-wrap"     id="detail-tags"></div>
+      <div class="platform-tags" id="detail-platforms"></div>
+    </div>
+
+    <!-- RIGHT: 리뷰 -->
+    <div class="detail-right">
+
+      <!-- 리뷰 입력 -->
+      <div id="review-input-section" class="review-input-box" style="display:none;">
+        <div class="star-input-row">
+          <div class="star-input-label">
+            별점 입력
+            <div class="interactive-stars" id="interactive-stars">
+              <span class="i-star" data-v="1">★</span>
+              <span class="i-star" data-v="2">★</span>
+              <span class="i-star" data-v="3">★</span>
+              <span class="i-star" data-v="4">★</span>
+              <span class="i-star" data-v="5">★</span>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="action-btn cancel" onclick="resetReview()">취소</button>
+            <button class="action-btn submit" onclick="submitReview()">등록</button>
+          </div>
+        </div>
+        <textarea class="review-textarea" id="review-text" placeholder="댓글을 남겨보세요"></textarea>
+      </div>
+
+      <!-- 정렬 -->
+      <div class="sort-tabs">
+        <button class="sort-tab active" onclick="setSort(this,'latest')">최신순</button>
+        <button class="sort-tab"        onclick="setSort(this,'popular')">인기순</button>
+      </div>
+
+      <!-- 리뷰 목록 -->
+      <div class="review-list" id="review-list"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { onAuthReady, getCurrentUser, logout } from './auth.js';
+  import {
+    BOOK_SVG_DETAIL,
+    renderStars, reviewCardHTML,
+    addReview, getReviews, deleteReview, voteReview,
+    fetchBookById,
+  } from './data.js';
+
+  let currentRating = 0;
+  let currentBook   = null;
+  let currentSort   = 'latest';
+  let currentUser   = null;
+
+  /* ── nav ── */
+  onAuthReady((user) => {
+    currentUser = user;
+    const el = document.getElementById('nav-auth');
+    if (user) {
+      el.innerHTML = `
+        <span style="font-size:15px;font-weight:700;padding:7px 12px;cursor:default;">
+          @${user.displayName || user.email}님
+        </span>
+        <button onclick="window._logout()"
+          style="background:#d0d4da;border:none;border-radius:6px;padding:7px 12px;
+                 font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;">
+          로그아웃
+        </button>`;
+      window._logout = logout;
+      /* 로그인 상태면 입력창 표시 */
+      document.getElementById('review-input-section').style.display = 'block';
+    } else {
+      el.innerHTML = `<a href="login.html" class="login-btn"
+        style="font-size:16px;font-weight:700;padding:7px 18px;">로그인</a>`;
+      document.getElementById('review-input-section').style.display = 'none';
+    }
+  });
+
+  /* ── 탭 ── */
+  window.switchTab = function(btn) {
+    document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  };
+
+  /* ── 별점 입력 ── */
+  document.querySelectorAll('#interactive-stars .i-star').forEach(star => {
+    star.addEventListener('click', () => {
+      currentRating = parseInt(star.dataset.v);
+      updateInputStars();
+    });
+    star.addEventListener('mouseenter', () => {
+      const v = parseInt(star.dataset.v);
+      document.querySelectorAll('#interactive-stars .i-star').forEach(s =>
+        s.classList.toggle('lit', parseInt(s.dataset.v) <= v)
+      );
+    });
+    star.addEventListener('mouseleave', updateInputStars);
+  });
+
+  function updateInputStars() {
+    document.querySelectorAll('#interactive-stars .i-star').forEach(s =>
+      s.classList.toggle('lit', parseInt(s.dataset.v) <= currentRating)
+    );
+  }
+
+  /* ── 정렬 ── */
+  window.setSort = async function(btn, mode) {
+    currentSort = mode;
+    document.querySelectorAll('.sort-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    await loadReviews();
+  };
+
+  /* ── 리뷰 취소 ── */
+  window.resetReview = function() {
+    currentRating = 0;
+    updateInputStars();
+    document.getElementById('review-text').value = '';
+  };
+
+  /* ── 리뷰 등록 ── */
+  window.submitReview = async function() {
+    if (!currentUser) {
+      if (confirm('로그인이 필요합니다. 로그인 페이지로 이동할까요?')) {
+        window.location.href = 'login.html?redirect=' + encodeURIComponent('detail.html?id=' + currentBook.id);
+      }
+      return;
+    }
+    const text = document.getElementById('review-text').value.trim();
+    if (!currentRating) { alert('별점을 선택해주세요.'); return; }
+    if (!text)          { alert('리뷰 내용을 입력해주세요.'); return; }
+
+    const btn = document.querySelector('.action-btn.submit');
+    btn.disabled = true; btn.textContent = '등록 중...';
+    try {
+      /* 리뷰 저장 */
+      await addReview(currentBook.id, text, currentRating);
+
+      /* 입력창 초기화 → 목록 새로고침 → 평균 별점 재계산 */
+      window.resetReview();
+      await loadReviews();          // loadReviews 안에서 평균 별점도 갱신
+    } catch(e) {
+      alert('등록 실패: ' + e.message);
+    } finally {
+      btn.disabled = false; btn.textContent = '등록';
+    }
+  };
+
+  /* ── 리뷰 삭제 (reviewCardHTML에서 호출) ── */
+  window.handleDeleteReview = async function(reviewId) {
+    if (!confirm('댓글을 삭제할까요?')) return;
+    try {
+      await deleteReview(reviewId);
+      await loadReviews();
+    } catch(e) { alert('삭제 실패: ' + e.message); }
+  };
+
+  /* ── 추천/비추천 (reviewCardHTML에서 호출) ── */
+  window.handleUpvote   = async function(id) {
+    await voteReview(id, 'up');
+    const el = document.getElementById('up-' + id);
+    if (el) el.textContent = parseInt(el.textContent) + 1;
+  };
+  window.handleDownvote = async function(id) {
+    await voteReview(id, 'down');
+    const el = document.getElementById('down-' + id);
+    if (el) el.textContent = parseInt(el.textContent) + 1;
+  };
+
+  /* ── 리뷰 목록 로드 + 평균 별점 계산 ──
+   *  books 컬렉션을 수정하지 않고 reviews에서 직접 평균을 계산해 표시
+   */
+  async function loadReviews() {
+    const listEl = document.getElementById('review-list');
+    listEl.innerHTML = '<p style="color:var(--text-sub);padding:16px 0;">불러오는 중...</p>';
+    try {
+      const reviews = await getReviews(currentBook.id, currentSort);
+
+      /* 평균 별점: reviews에서 직접 계산 (books 문서 수정 없음) */
+      if (reviews.length) {
+        const total = reviews.reduce((s, r) => s + (Number(r.rating) || 0), 0);
+        const avg   = Math.round((total / reviews.length) * 10) / 10;
+        document.getElementById('rating-stars').innerHTML =
+          renderStars(Math.round(avg), 28);
+        document.getElementById('rating-score').textContent =
+          Number(avg).toFixed(2);
+      } else {
+        /* 후기 없으면 원본 크롤링 rating 표시 */
+        const fallback = currentBook.rating ?? 0;
+        document.getElementById('rating-stars').innerHTML =
+          renderStars(Math.round(fallback), 28);
+        document.getElementById('rating-score').textContent =
+          Number(fallback).toFixed(2);
+        listEl.innerHTML = '<p style="color:var(--text-light);padding:16px 0;">아직 후기가 없습니다. 첫 번째 후기를 남겨보세요!</p>';
+        return;
+      }
+
+      listEl.innerHTML = reviews.map(r => reviewCardHTML(r, currentUser?.uid)).join('');
+    } catch(e) {
+      listEl.innerHTML = '<p style="color:var(--text-sub);">후기를 불러오지 못했습니다.</p>';
+      console.error('loadReviews 오류:', e);
+    }
+  }
+
+  /* ── 페이지 초기화 ── */
+  async function init() {
+    const params = new URLSearchParams(window.location.search);
+    const rawId  = params.get('id');           // 문자열 그대로 유지 (Firestore doc id)
+    const from   = params.get('from') || 'index';
+
+    /* 돌아가기 링크 */
+    document.getElementById('back-btn').href = from === 'search_webtoon'
+    ? `search_webtoon.html?q=${encodeURIComponent(params.get('q') || '')}&tags=${encodeURIComponent(params.get('tags') || '')}`
+    : from === 'search'
+    ? `search.html?q=${encodeURIComponent(params.get('q') || '')}&tags=${encodeURIComponent(params.get('tags') || '')}`
+    : 'index.html';
+
+    /* Firestore books 컬렉션에서 작품 조회 (문서 ID = rawId) */
+    const b = await fetchBookById(rawId);
+    if (!b) {
+      document.getElementById('detail-title').textContent  = '작품을 찾을 수 없습니다.';
+      document.getElementById('detail-author').textContent = '';
+      return;
+    }
+    currentBook = b;
+
+    /* 별점: 초기값은 크롤링 원본 rating 표시
+     *        loadReviews() 완료 후 reviews 기반 평균으로 자동 갱신됨 */
+    const ratingDisplay = b.rating ?? 0;
+    document.getElementById('rating-stars').innerHTML = renderStars(Math.round(ratingDisplay), 28);
+    document.getElementById('rating-score').textContent = Number(ratingDisplay).toFixed(2);
+
+    document.getElementById('detail-cover').innerHTML   = b.thumbnail
+      ? `<img src="${b.thumbnail}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius);">`
+      : BOOK_SVG_DETAIL;
+    document.getElementById('detail-title').textContent  = b.title  || '';
+    document.getElementById('detail-author').textContent = b.author || '';
+    
+    //플랫폼별로 색깔 다르게 
+    function getPlatformColor(platform) {
+      if (['네이버웹툰', '시리즈'].includes(platform)) return 'green';
+      if (['카카오웹툰', '카카오페이지'].includes(platform)) return 'yellow';
+      if (platform === '리디북스') return 'blue';
+    return 'black';
+    }
+    document.getElementById('detail-platforms').innerHTML =
+      (b.platforms || []).map(p => `<span class="tag ${getPlatformColor(p)}">${p}</span>`).join('');
+    await loadReviews();
+  }
+
+  init();
+</script>
+</body>
+</html>

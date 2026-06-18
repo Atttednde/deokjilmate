@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>내가 남긴 후기 — 덕질메이트</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  .page-wrap {
+    max-width: 1100px;
+    margin: 40px auto;
+    padding: 0 32px;
+  }
+
+  /* 리뷰 그리드 */
+  .review-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .review-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+  /* 리뷰 카드 */
+  .review-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 22px;
+  }
+
+  .review-card .stars { margin-bottom: 10px; }
+
+  .review-card .work-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 5px;
+    cursor: pointer;
+  }
+
+  .review-card .work-title:hover { text-decoration: underline; }
+
+  .review-card .review-content {
+    font-size: 13px;
+    color: var(--text-sub);
+    margin-bottom: 16px;
+    line-height: 1.55;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="logo" href="index.html">덕질메이트</a>
+  <div class="nav-links">
+    <a href="index.html">검색</a>
+    <a href="booklist.html">독서목록</a>
+    <a href="diary.html">독서록</a>
+    <a href="myreviews.html" class="active">내가 남긴 후기</a>
+    <span id="nav-user" style="font-size:16px;font-weight:700;padding:7px 18px;cursor:default;"></span>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <div class="review-grid" id="review-grid"></div>
+</div>
+
+<script type="module">
+  import { requireLogin, onAuthReady, logout } from './auth.js';
+  import { fetchBookById, renderStars, deleteReview, voteReview } from './data.js';
+  import { db } from './firebase-config.js';
+  import {
+    collection, query, where, orderBy, getDocs,
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const user = await requireLogin();
+
+  /* nav */
+  onAuthReady((u) => {
+    const el = document.getElementById('nav-user');
+    if (u) {
+      el.innerHTML = `
+        <span style="cursor:default;">@${u.displayName || u.email}님</span>
+        <button onclick="window._logout()"
+          style="background:#d0d4da;border:none;border-radius:6px;padding:6px 12px;
+                 font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;margin-left:8px;">
+          로그아웃
+        </button>`;
+      window._logout = logout;
+    }
+  });
+
+  /* ── 내 후기 목록 로드 ── */
+  async function renderReviews() {
+    const grid = document.getElementById('review-grid');
+    grid.innerHTML = '<p style="color:var(--text-sub);grid-column:1/-1;padding:40px 0;">불러오는 중...</p>';
+
+    try {
+      /* ── uid 단독 쿼리 (복합 인덱스 불필요) → 클라이언트 정렬 ── */
+      const snap = await getDocs(query(
+        collection(db, 'reviews'),
+        where('uid', '==', user.uid)
+      ));
+
+      if (snap.empty) {
+        grid.innerHTML = '<p style="color:var(--text-light);grid-column:1/-1;padding:40px 0;">남긴 후기가 없습니다.</p>';
+        return;
+      }
+
+      /* 최신순 정렬 (클라이언트) */
+      const reviews = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
+
+      /* bookId(Firestore 문자열 id)로 작품 제목 조회 — 병렬 처리 */
+      const bookMap = {};
+      await Promise.all(
+        [...new Set(reviews.map(r => r.bookId))].map(async (bid) => {
+          if (!bid) return;
+          const book = await fetchBookById(bid);
+          if (book) bookMap[bid] = book;
+        })
+      );
+
+      grid.innerHTML = reviews.map(r => {
+        const book = bookMap[r.bookId];
+        const date = r.createdAt?.toDate
+          ? r.createdAt.toDate().toLocaleDateString('ko-KR') : '';
+        return `
+          <div class="review-card" data-id="${r.id}">
+            <div class="stars">${renderStars(r.rating || 0)}</div>
+            <div class="work-title"
+                 style="cursor:pointer"
+                 onclick="location.href='detail.html?id=${r.bookId}'">
+              ${book?.title || r.title || '작품제목'}
+            </div>
+            <div class="review-content">${r.content}</div>
+            <div class="review-footer">
+              <div class="reviewer">
+                <div class="avatar"></div>
+                <div class="reviewer-info">
+                  <div class="name">${r.username || ''}</div>
+                  <div class="date">${date}</div>
+                </div>
+              </div>
+              <div class="vote-btns">
+                <button class="vote-btn" onclick="onUpvote('${r.id}')">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/>
+                    <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+                  </svg>
+                  <span id="up-${r.id}">${r.upvotes || 0}</span>
+                </button>
+                <button class="vote-btn" onclick="onDownvote('${r.id}')">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/>
+                    <path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/>
+                  </svg>
+                  <span id="down-${r.id}">${r.downvotes || 0}</span>
+                </button>
+                <button class="vote-btn" style="color:#e53e3e"
+                        onclick="onDelete('${r.id}')">삭제</button>
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+
+    } catch(e) {
+      grid.innerHTML = '<p style="color:var(--text-sub);grid-column:1/-1;padding:40px 0;">후기를 불러오지 못했습니다.</p>';
+      console.error('renderReviews 오류:', e.code, e.message);
+    }
+  }
+
+  window.onUpvote = async function(id) {
+    await voteReview(id, 'up');
+    const el = document.getElementById('up-' + id);
+    if (el) el.textContent = parseInt(el.textContent) + 1;
+  };
+  window.onDownvote = async function(id) {
+    await voteReview(id, 'down');
+    const el = document.getElementById('down-' + id);
+    if (el) el.textContent = parseInt(el.textContent) + 1;
+  };
+  window.onDelete = async function(id) {
+    if (!confirm('댓글을 삭제할까요?')) return;
+    try {
+      await deleteReview(id);
+      document.querySelector(`[data-id="${id}"]`)?.remove();
+    } catch(e) { alert('삭제 실패: ' + e.message); }
+  };
+
+  renderReviews();
+</script>
+</body>
+</html>

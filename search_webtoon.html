@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>웹툰 검색 — 덕질메이트</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  /* ── Hero ── */
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 360px;
+    position: relative;
+    gap: 20px; 
+  }
+  @media (max-width: 768px) {
+  .hero {
+    grid-template-columns: 1fr; /* 모바일 크기에서 세로 1단 배치 */
+    min-height: auto;
+    }
+  }
+
+
+  .hero-left {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 48px 48px 32px;
+    background: var(--bg);
+    position: relative;
+    z-index: 10;
+  }
+
+  .hero-left h1 {
+    font-size: 38px;
+    font-weight: 900;
+    letter-spacing: -1px;
+    margin-bottom: 28px;
+  }
+
+  /* 검색창 */
+  .search-box { max-width: 440px; }
+
+  .result-count {
+    font-size: 13px;
+    color: var(--text-sub);
+    margin-top: 2px;
+    margin-bottom: 4px;
+  }
+
+  /* ── 태그 검색 패널 (오른쪽) ── */
+  .hero-right {
+    background: var(--navy);
+    padding: 28px 28px 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .tag-panel {
+    background: rgba(255,255,255,0.96);
+    border-radius: var(--radius);
+    padding: 20px 22px;
+  }
+
+  .tag-panel-title {
+    font-size: 16px;
+    font-weight: 900;
+    margin-bottom: 14px;
+    color: var(--text-main);
+  }
+
+  /* 카테고리 행 */
+  .cat-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 6px;
+    overflow: hidden;
+  }
+
+  .cat-label {
+    font-size: 14px;
+    font-weight: 700;
+    width: 42px;
+    flex-shrink: 0;
+    padding-top: 6px;
+    color: var(--text-main);
+  }
+
+  .cat-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    flex: 1;
+    max-height: 36px;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+  }
+
+  .cat-tags.expanded { max-height: 200px; }
+
+  .tag-chip {
+    padding: 5px 14px;
+    border-radius: 20px;
+    border: 1.5px solid #ccc;
+    background: #efefef;
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--text-main);
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .tag-chip:hover { border-color: var(--navy); }
+
+  .tag-chip.selected {
+    background: var(--navy-dark);
+    color: #fff;
+    border-color: var(--navy-dark);
+  }
+
+  .toggle-btn {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    color: var(--text-sub);
+    padding: 2px 4px;
+    line-height: 1;
+    margin-top: 4px;
+    transition: transform 0.2s;
+  }
+
+  .toggle-btn.open { transform: rotate(180deg); }
+
+  /* ── 분위기 확장 드롭다운 (검색창 아래 펼침) ── */
+  .mood-dropdown {
+    display: none;
+    background: #fff;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    position: absolute;
+    left: 0;
+    top: 100%;
+    width: calc(100% - 0px);
+    z-index: 50;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  }
+
+  .mood-dropdown.open { display: block; }
+
+  .mood-dropdown .mood-label {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+
+  .mood-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  /* ── 필터 버튼 행 ── */
+  .filter-btns {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .filter-btn {
+    padding: 9px 24px;
+    border-radius: var(--radius-sm);
+    border: none;
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .filter-btn.reset  { background: #d0d4da; color: var(--text-main); }
+  .filter-btn.reset:hover  { background: #bec3cb; }
+  .filter-btn.apply  { background: var(--navy-dark); color: #fff; }
+  .filter-btn.apply:hover  { background: var(--navy-light); }
+
+  /* ── 작품 그리드 ── */
+  .books-section { padding: 28px 32px; }
+
+  .books-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr)); 
+    gap: 20px;
+  }
+   
+  @media (max-width: 1024px) {
+    .books-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  }
+  @media (max-width: 600px) {
+    .books-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  .book-card {
+    cursor: pointer;
+    transition: transform 0.2s;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+  }
+
+  .book-card:hover { transform: translateY(-4px); }
+
+  .book-cover {
+    width: 100%;
+    aspect-ratio: 3/4;
+    background: #d8d5cf;
+    border-radius: var(--radius-sm);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .book-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* 어떤 이미지든 비율을 유지하며 꽉 채움 */
+  }
+
+  .book-cover svg { opacity: 0.4; }
+
+  .book-card .genre  { font-size: 11px; color: var(--text-light); margin-bottom: 3px; }
+  .book-card .title  { font-size: 14px; font-weight: 700; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .book-card .author { font-size: 12px; color: var(--text-sub); }
+
+  /* 선택 태그 요약 */
+  .selected-summary {
+    font-size: 13px;
+    color: var(--text-sub);
+    margin-bottom: 14px;
+    min-height: 20px;
+  }
+
+  .selected-summary .chip {
+    display: inline-block;
+    background: var(--navy-dark);
+    color: #fff;
+    border-radius: 12px;
+    padding: 2px 10px;
+    font-size: 12px;
+    margin-right: 4px;
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="logo" href="index.html">덕질메이트</a>
+  <div class="nav-links">
+    <a class="active" href="index.html">검색</a>
+    <a href="booklist.html">독서목록</a>
+    <a href="diary.html">독서록</a>
+    <a href="myreviews.html">내가 남긴 후기</a>
+    <span id="nav-auth"></span>
+  </div>
+</nav>
+
+<!-- 탭 바 -->
+<div class="tab-bar">
+  <button onclick="location.href='index.html'">추천</button>
+  <button class="active">웹툰</button>
+  <button onclick="location.href='search.html'">웹소설</button>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-left">
+    <h1>작품을 검색하세요</h1>
+    <div class="search-box">
+    
+        
+      <input type="text" id="search-input" placeholder="작품을 검색하세요" onkeydown="if(event.key==='Enter')doSearch()">
+      <button class="search-btn" onclick="doSearch()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </button>
+     
+    </div>
+     
+     
+
+    <!-- 분위기 드롭다운 (hero-left 기준) -->
+    <div style="position:relative;">
+      <div class="mood-dropdown" id="mood-dropdown">
+        <div class="mood-label">분위기</div>
+        <div class="mood-tags" id="mood-tags"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 태그 패널 -->
+  <div class="hero-right">
+    <div class="tag-panel">
+      <div class="tag-panel-title">태그 검색</div>
+
+      <!-- 장르 -->
+      <div class="cat-row">
+        <span class="cat-label">장르</span>
+        <div class="cat-tags" id="cat-genre"></div>
+        <button class="toggle-btn" onclick="toggleCat('genre',this)">∨</button>
+      </div>
+
+      <!-- 배경 -->
+      <div class="cat-row">
+        <span class="cat-label">배경</span>
+        <div class="cat-tags" id="cat-setting"></div>
+        <button class="toggle-btn" onclick="toggleCat('setting',this)">∨</button>
+      </div>
+
+      <!-- 인물 -->
+      <div class="cat-row">
+        <span class="cat-label">인물</span>
+        <div class="cat-tags" id="cat-character"></div>
+        <button class="toggle-btn" onclick="toggleCat('character',this)">∨</button>
+      </div>
+
+      <!-- 분위기 (토글 시 hero-left 아래에 드롭다운) -->
+      <div class="cat-row">
+        <span class="cat-label">분위기</span>
+        <div class="cat-tags" id="cat-mood" ></div>
+        <button class="toggle-btn" onclick="toggleCat('mood',this)">∨</button>
+      </div>
+
+      <!-- 필터 버튼 -->
+      <div class="filter-btns">
+        <button class="filter-btn reset" onclick="resetFilters()">해제</button>
+        <button class="filter-btn apply" onclick="applyFilter()">필터링 하기</button>
+      </div>
+    </div>
+  </div>
+</div>
+ 
+<!-- 결과 -->
+<div class="books-section">
+  <div class="result-count" id="result-count"></div>
+  <div class="selected-summary" id="selected-summary"></div>
+  <div class="books-grid" id="books-grid"></div>
+</div>
+
+<script type="module">
+  import { onAuthReady, logout } from './auth.js';
+  import { BOOK_SVG_LG, fetchBooks } from './data.js';
+
+  /* ── nav ── */
+  onAuthReady((user) => {
+    const el = document.getElementById('nav-auth');
+    if (user) {
+      el.innerHTML = `
+        <span style="font-size:15px;font-weight:700;padding:7px 12px;cursor:default;">
+          @${user.displayName || user.email}님
+        </span>
+        <button onclick="window._logout()"
+          style="background:#d0d4da;border:none;border-radius:6px;padding:7px 12px;
+                 font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;">
+          로그아웃
+        </button>`;
+      window._logout = logout;
+    } else {
+      el.innerHTML = `<a href="login.html" class="login-btn"
+        style="font-size:16px;font-weight:700;padding:7px 18px;">로그인</a>`;
+    }
+  });
+
+  /* ── 태그 정의 ── */
+  const TAG_DEFS = {
+    genre:     ['판타지', '로맨스/순정', '로판', '드라마', 'GL', 'BL', '추리미스터리','그래픽노블','스포츠','학습만화'],
+    setting:   ['학원','동양','서양','현대','SF/미래','시대극/역사','판타지'],
+    character: ['히어로', '능력자', '권력가', '귀족', '왕족', '왕자', '공주', '기사', '마법사', '악역', '악역영애'],
+    mood:      ['개그', '액션', '힐링', '감동','새드엔딩'],
+  };
+
+  const selectedTags = new Set();
+  let activeDropdown = null; 
+  let moodOpen = false;
+
+  /* ── 태그 UI 빌드 ── */
+  function buildCat(catId, tags) {
+    document.getElementById('cat-' + catId).innerHTML = tags.map(t => `
+      <button class="tag-chip ${selectedTags.has(t) ? 'selected' : ''}"
+              onclick="window.toggleTag('${t}', this)">${t}</button>`).join('');
+  }
+
+  
+
+  function renderTagUI() {
+    buildCat('genre',     TAG_DEFS.genre);
+    buildCat('setting',   TAG_DEFS.setting);
+    buildCat('character', TAG_DEFS.character);
+    buildCat('mood',      TAG_DEFS.mood); 
+  }
+
+  /* ── 태그 토글 ── */
+  window.toggleTag = function(tag, btn) {
+    if (selectedTags.has(tag)) { selectedTags.delete(tag); btn.classList.remove('selected'); }
+    else                       { selectedTags.add(tag);    btn.classList.add('selected');    }
+    
+     
+  };
+
+  window.toggleCat = function(catId, btn) {
+    document.getElementById('cat-' + catId).classList.toggle('expanded');
+    btn.classList.toggle('open');
+  };
+
+   
+  /* ── 필터 초기화 ── */
+    // ── [수정] 확실하게 총 건수까지 초기화하는 리셋 함수 ──
+  window.resetFilters = async function() {
+    selectedTags.clear();
+    activeDropdown = null;
+    
+    // 1. 모든 드롭다운 및 버튼 UI 상태 초기화
+    document.querySelectorAll('.custom-dropdown').forEach(d => d.classList.remove('open'));
+    document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('open'));
+    
+    // 2. 검색 입력창 비우기
+    document.getElementById('search-input').value = '';
+    
+    // 3. 태그 칩 화면 다시 그리기 및 선택 요약 정리
+    renderTagUI();
+    updateSummary();
+    
+    // 4. 💡 [강력 초기화] 제목과 총 건수를 확실하게 빈 값이나 기본 문구로 리셋
+    const queryTitleEl = document.getElementById('query-title');
+    const resultCountEl = document.getElementById('result-count');
+    
+    if (queryTitleEl) queryTitleEl.textContent = '작품 검색';
+    if (resultCountEl) resultCountEl.textContent = '검색 전입니다.'; // 또는 '' (공백) 처리
+    
+    // 5. 하단 작품 카드 그리드 초기화
+    const grid = document.getElementById('books-grid');
+    if (grid) {
+      grid.innerHTML = `
+        <div class="no-results" style="grid-column: 1 / -1; padding: 60px 0;">
+          <strong>원하는 작품을 찾아보세요!</strong>
+          검색어를 입력하거나 우측에서 태그를 선택한 후 필터링을 진행해주세요.
+        </div>`;
+    }
+  };
+  
+  /* ── 필터 적용 ── */
+  window.applyFilter = async function() {
+    const q = document.getElementById('search-input').value.trim();
+    updateSummary();
+    await renderBooks(q);
+  };
+
+  /* ── 검색 ── */
+  window.doSearch = async function() {
+    const q = document.getElementById('search-input').value.trim();
+    await renderBooks(q);
+  };
+
+  /* ── 선택 태그 요약 ── */
+  function updateSummary() {
+    const el = document.getElementById('selected-summary');
+    if (!selectedTags.size) { el.innerHTML = ''; return; }
+    el.innerHTML = '선택한 태그: ' +
+      [...selectedTags].map(t => `<span class="chip">${t}</span>`).join('');
+  }
+
+  /* ── 작품 그리드 렌더 (Firestore에서 가져오기) ── */
+  async function renderBooks(q = '') {
+  const grid = document.getElementById('books-grid');
+  grid.innerHTML = '<p style="color:var(--text-sub);grid-column:1/-1;padding:40px 0;">불러오는 중...</p>';
+
+  try {
+    // tags 필드가 없는 웹툰 API 데이터이므로 genre 필터만 사용
+    const selectedGenre = [...selectedTags].find(t => TAG_DEFS.genre.includes(t));
+
+    const books = await fetchBooks({
+      // genre: selectedGenre,   // genre 필터만 Firestore 쿼리로 처리
+      query: q,               // 텍스트 검색은 fetchBooks 내부에서 클라이언트 필터링
+      tags:[...selectedTags],
+      collectionName: 'webtoons' // 웹툰 컬렉션에서 검색
+    });
+    
+    document.getElementById('result-count').textContent = `총 ${books.length}건`;
+
+    if (!books.length) {
+      grid.innerHTML = '<p style="color:var(--text-sub);grid-column:1/-1;padding:40px 0;">조건에 맞는 작품이 없습니다.</p>';
+      return;
+    }
+
+    grid.innerHTML = books.map(b => `
+      <a class="book-card" href="detail.html?id=${b.id}&from=search_webtoon&q=${encodeURIComponent(q)}&tags=${encodeURIComponent([...selectedTags].join(','))}" >
+        <div class="book-cover">
+          ${b.thumbnail
+            ? `<img src="${b.thumbnail}" style="width:100%;height:100%;object-fit:cover;" 
+                    onerror="this.style.display='none'">`
+            : BOOK_SVG_LG}
+        </div>
+        <div class="genre">${b.genre || ''}</div>
+        <div class="title">${b.title || ''}</div>
+        <div class="author">${b.author || ''}</div>
+      </a>`).join('');
+
+  } catch(e) {
+    grid.innerHTML = '<p style="color:var(--text-sub);grid-column:1/-1;padding:40px 0;">작품을 불러오지 못했습니다.</p>';
+    console.error('웹툰 검색 실패:', e);
+  }
+}
+
+  /* ── 초기화 ── */
+  renderTagUI();
+
+const urlParams = new URLSearchParams(location.search);
+const restoredTags = urlParams.get('tags');
+if (restoredTags) {
+  restoredTags.split(',').filter(Boolean).forEach(t => selectedTags.add(t));
+}
+renderTagUI();
+
+const initQuery = urlParams.get('q') || '';
+
+if (initQuery || restoredTags) {
+  // 검색어나 태그가 있을 때만 (detail에서 복귀한 경우) 렌더링
+  await renderBooks(initQuery);
+} else {
+  // 초기 진입 시 안내 메시지만 표시
+  const grid = document.getElementById('books-grid');
+  grid.innerHTML = `
+    <div class="no-results" style="grid-column: 1 / -1; padding: 60px 0;">
+      <strong>원하는 웹툰을 찾아보세요!</strong>
+      검색어를 입력하거나 우측에서 태그를 선택한 후 필터링을 진행해주세요.
+    </div>`;
+  document.getElementById('result-count').textContent = '검색 전입니다.';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>독서목록 — 덕질메이트</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  .page-wrap {
+    max-width: 1100px;
+    margin: 40px auto;
+    padding: 0 32px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    align-items: start;
+  }
+
+  /* ── 왼쪽: 통계 카드 ── */
+  .stat-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 36px 40px;
+    border: 1px solid var(--border);
+  }
+  .stat-card .sub { font-size: 15px; color: var(--text-sub); margin-bottom: 6px; }
+  .stat-number {
+    font-size: 64px; font-weight: 900; letter-spacing: -3px;
+    line-height: 1; display: inline;
+  }
+  .stat-unit { font-size: 20px; font-weight: 700; margin-left: 4px; }
+  .stat-divider { border: none; border-top: 1.5px solid var(--border); margin: 20px 0; }
+  .stat-details { text-align: right; line-height: 2; font-size: 15px; }
+  .stat-details strong { font-weight: 700; }
+
+  /* ── 왼쪽: 내가 남긴 후기 ── */
+  .section-title { font-size: 20px; font-weight: 900; margin: 32px 0 14px; letter-spacing: -0.5px; }
+  .review-list { display: flex; flex-direction: column; gap: 12px; }
+  .review-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px 20px;
+  }
+  .review-item .work-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+
+  /* ── 오른쪽 상단: 독서 목록 카드 ── */
+  .list-card {
+    background: var(--surface); border-radius: var(--radius);
+    padding: 28px 28px 20px; border: 1px solid var(--border);
+  }
+  .list-card-header {
+    display: flex; align-items: center;
+    justify-content: space-between; margin-bottom: 16px;
+  }
+  .list-card-header h2 { font-size: 20px; font-weight: 900; letter-spacing: -0.5px; }
+  .btn-group { display: flex; gap: 8px; }
+  .pill-btn {
+    padding: 7px 18px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface); font-size: 13px; font-family: inherit;
+    font-weight: 600; cursor: pointer; color: var(--text-sub); transition: all 0.15s;
+  }
+  .pill-btn.active { background: var(--navy-dark); color: #fff; border-color: var(--navy-dark); }
+
+  /* ── 독서목록 고정 높이 + 스크롤 ── */
+  .book-list {
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  .book-list::-webkit-scrollbar { width: 5px; }
+  .book-list::-webkit-scrollbar-track { background: #f0f0f0; border-radius: 10px; }
+  .book-list::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
+  .book-list::-webkit-scrollbar-thumb:hover { background: #aaa; }
+
+  /* ── 드래그 ── */
+  .drag-handle {
+    cursor: grab; color: #bbb; font-size: 16px;
+    padding: 0 8px 0 0; user-select: none; flex-shrink: 0;
+  }
+  .drag-handle:active { cursor: grabbing; }
+  .book-item.dragging { opacity: 0.4; background: #f0f0f0; }
+  .book-item.drag-over { border-top: 2px solid var(--navy-dark); }
+
+  /* ── 책 행 ── */
+  .book-item {
+    display: flex; align-items: center; padding: 11px 4px;
+    border-bottom: 1px solid var(--border); gap: 10px;
+    border-radius: 4px; transition: background 0.1s;
+  }
+  .book-item:last-child { border-bottom: none; }
+  .book-item:hover { background: var(--bg); }
+
+  .rank-num { font-size: 13px; color: var(--text-light); font-weight: 700;
+    min-width: 20px; text-align: center; flex-shrink: 0; }
+
+  .book-info-sm { flex: 1; min-width: 0; }
+  .book-title-sm { font-size: 14px; font-weight: 700;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .book-meta-sm { font-size: 12px; color: var(--text-sub); }
+
+  .bookmark-btn {
+    background: none; border: none; font-size: 18px;
+    cursor: pointer; flex-shrink: 0; padding: 0 4px; opacity: 0.4; transition: opacity 0.15s;
+  }
+  .bookmark-btn.active { opacity: 1; }
+  .remove-btn {
+    background: none; border: none; color: #ccc; font-size: 14px;
+    cursor: pointer; flex-shrink: 0; padding: 0 4px; transition: color 0.15s;
+  }
+  .remove-btn:hover { color: #e53e3e; }
+
+  /* ── 오른쪽 하단: 작품 추가하기 ── */
+  .add-card {
+    background: var(--surface); border-radius: var(--radius);
+    padding: 28px; border: 1px solid var(--border); margin-top: 20px;
+  }
+  .add-card h3 { font-size: 17px; font-weight: 900; margin-bottom: 18px; }
+  .add-field {
+    display: flex; align-items: center;
+    border-bottom: 1.5px solid var(--border); padding: 8px 0; margin-bottom: 4px;
+  }
+  .add-field label { font-size: 14px; font-weight: 700; width: 50px; flex-shrink: 0; }
+  .add-field input {
+    flex: 1; border: none; outline: none; font-size: 14px;
+    font-family: inherit; text-align: right; color: var(--text-main); background: transparent;
+  }
+  .add-field input::placeholder { color: var(--text-light); }
+  .genre-select-row { display: flex; justify-content: flex-end; gap: 8px; margin: 12px 0 20px; }
+  .genre-chip {
+    padding: 5px 14px; border-radius: 20px; border: 1.5px solid var(--border);
+    font-size: 13px; font-family: inherit; cursor: pointer;
+    background: transparent; color: var(--text-sub); transition: all 0.15s;
+  }
+  .genre-chip.active { background: var(--navy-dark); color: #fff; border-color: var(--navy-dark); }
+  .add-btn-row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+  .action-btn {
+    padding: 9px 22px; border-radius: var(--radius-sm); border: none;
+    font-size: 14px; font-family: inherit; font-weight: 600; cursor: pointer; transition: all 0.15s;
+  }
+  .action-btn.cancel { background: #d0d4da; color: var(--text-main); }
+  .action-btn.cancel:hover { background: #bec3cb; }
+  .action-btn.submit { background: var(--navy-dark); color: #fff; }
+  .action-btn.submit:hover { background: var(--navy-light); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="logo" href="index.html">덕질메이트</a>
+  <div class="nav-links">
+    <a href="index.html">검색</a>
+    <a href="booklist.html" class="active">독서목록</a>
+    <a href="diary.html">독서록</a>
+    <a href="myreviews.html">내가 남긴 후기</a>
+    <span class="login-btn" id="nav-user"
+      style="font-size:16px;font-weight:700;padding:7px 18px;cursor:default;"></span>
+  </div>
+</nav>
+
+<div class="page-wrap">
+
+  <!-- ══ 왼쪽 ══ -->
+  <div>
+    <!-- 통계 카드 -->
+    <div class="stat-card">
+      <div class="sub">현재까지 총</div>
+      <div>
+        <span class="stat-number" id="total-count">0</span>
+        <span class="stat-unit">개의 작품을 읽으셨습니다!</span>
+      </div>
+      <hr class="stat-divider">
+      <div class="stat-details">
+        <div><strong>웹툰 총 <span id="webtoon-count">0</span>개</strong></div>
+        <div><strong>웹소설 총 <span id="webnovel-count">0</span>개</strong></div>
+        <div style="color:var(--text-sub)">내가 남긴 댓글 <span id="comment-count">0</span>개</div>
+        <div style="color:var(--text-sub)">내가 남긴 독서록 <span id="diary-count">0</span>개</div>
+      </div>
+    </div>
+
+    <!-- 내가 남긴 후기 -->
+    <div class="section-title">내가 남긴 후기</div>
+    <div class="review-list" id="my-reviews"></div>
+  </div>
+
+  <!-- ══ 오른쪽 ══ -->
+  <div>
+    <!-- 독서 목록 -->
+    <div class="list-card">
+      <div class="list-card-header">
+        <h2>독서 목록</h2>
+        <div class="btn-group">
+          <button class="pill-btn active" onclick="sortBy(this,'rank')">순위별</button>
+          <button class="pill-btn"        onclick="sortBy(this,'bookmark')">북마크</button>
+        </div>
+      </div>
+      <div class="book-list" id="reading-list"></div>
+    </div>
+
+    <!-- 작품 추가하기 -->
+    <div class="add-card">
+      <h3>작품 추가하기</h3>
+      <div class="add-field" style="position:relative;">
+        <label>제목</label>
+        <input type="text" id="add-title" placeholder="입력" autocomplete="off">
+        <div id="add-autocomplete"
+          style="display:none;position:absolute;top:100%;left:0;right:0;
+                 background:#fff;border:1px solid var(--border);border-radius:6px;
+                 box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:999;
+                 max-height:200px;overflow-y:auto;">
+        </div>
+      </div>
+      <div class="add-field">
+        <label>작가</label>
+        <input type="text" id="add-author" placeholder="입력">
+      </div>
+      <div class="genre-select-row">
+        <button class="genre-chip active" onclick="selectGenre(this,'웹툰')">웹툰</button>
+        <button class="genre-chip"        onclick="selectGenre(this,'웹소설')">웹소설</button>
+      </div>
+      <div class="add-btn-row">
+        <button class="action-btn cancel" onclick="clearAdd()">취소</button>
+        <button class="action-btn submit" onclick="addBook()">등록</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { requireLogin, onAuthReady, logout } from './auth.js';
+  import {
+    THUMB_UP_SVG, THUMB_DOWN_SVG, BOOK_SVG_SM,
+    renderStars, reviewCardHTML, fetchBookById,
+    getReadingList, addToReadingList, removeFromReadingList,
+    toggleBookmark, saveReadingOrder, // 💡 data.js에서 연동할 순서 저장 함수
+  } from './data.js';
+  import { db } from './firebase-config.js';
+  import {
+    collection, query, where, getDocs,
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // 상태 변수 선언 최상단으로 이동 (ReferenceError 방지)
+  let readingList   = [];       // 통계용 원본 리스트
+  let listOrder     = [];       // 드래그 순서 및 정렬 반영용 배열
+  let currentSort   = 'rank';   // 'rank' | 'bookmark'
+  let selectedGenre = '웹툰';
+
+  const user = await requireLogin();
+
+  /* ── nav ── */
+  onAuthReady((u) => {
+    const el = document.getElementById('nav-user');
+    if (u) {
+      el.innerHTML = `
+        <span style="cursor:default;">@${u.displayName || u.email}님</span>
+        <button onclick="window._logout()"
+          style="background:#d0d4da;border:none;border-radius:6px;padding:6px 12px;
+                 font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;margin-left:8px;">
+          로그아웃
+        </button>`;
+      window._logout = logout;
+    }
+  });
+
+  /* ════════════════════════════════════
+     독서 목록 로드
+  ════════════════════════════════════ */
+  async function loadReadingList() {
+    try {
+      const items = await getReadingList();
+      readingList = items; // 글로벌 상태에 대입
+      
+      renderStats();
+      renderList(items);   
+    } catch(e) {
+      console.error('[loadReadingList 오류]', e.code, e.message);
+    }
+  }
+
+  /* ── 통계 ── */
+  async function renderStats() {
+    const diarySnap = await getDocs(query(
+      collection(db, 'diaries'),
+      where('uid', '==', user.uid)
+    ));
+    document.getElementById('total-count').textContent    = readingList.length;
+    document.getElementById('webtoon-count').textContent  = readingList.filter(b => b.genre === '웹툰').length;
+    document.getElementById('webnovel-count').textContent = readingList.filter(b => b.genre === '웹소설').length;
+    document.getElementById('comment-count').textContent  = '0';
+    document.getElementById('diary-count').textContent    = diarySnap.size;
+  }
+
+  /* ════════════════════════════════════
+     독서 목록 렌더
+  ════════════════════════════════════ */
+  function renderList(items) {
+    /* 💡 핵심: rank가 지정된 데이터가 있다면 rank 오름차순, 없다면 addedAt 역순 정렬 */
+    listOrder = [...items].sort((a, b) => {
+      if (a.rank !== undefined && b.rank !== undefined) {
+        return a.rank - b.rank;
+      }
+      const ta = a.addedAt?.seconds ?? 0;
+      const tb = b.addedAt?.seconds ?? 0;
+      return tb - ta; // 내림차순
+    });
+    drawList();
+  }
+
+  function drawList() {
+    const container = document.getElementById('reading-list');
+    const display   = currentSort === 'bookmark'
+      ? listOrder.filter(item => item.bookmarked)
+      : listOrder;
+
+    if (!display.length) {
+      container.innerHTML = `<p style="color:#aaa;padding:20px;text-align:center;">
+        ${currentSort === 'bookmark' ? '북마크한 작품이 없습니다.' : '독서 목록이 비어 있습니다.'}</p>`;
+      return;
+    }
+
+    container.innerHTML = display.map((item, idx) => `
+      <div class="book-item" draggable="true" data-id="${item.id}">
+        <span class="drag-handle" title="드래그하여 순서 변경">⠿</span>
+        <span class="rank-num">${idx + 1}</span>
+        <div class="book-info-sm" onclick="location.href='diary.html?id=${item.bookId}'" style="cursor:pointer;">
+          <div class="book-title-sm">${item.title || ''}</div>
+          <div class="book-meta-sm">${item.author || ''} · ${item.genre || ''}</div>
+        </div>
+        <button class="bookmark-btn ${item.bookmarked ? 'active' : ''}"
+                onclick="handleBookmark('${item.id}', ${!!item.bookmarked})">
+          ${item.bookmarked ? '★' : '☆'}
+        </button>
+        <button class="remove-btn" onclick="handleRemove('${item.id}')">✕</button>
+      </div>`).join('');
+
+    attachDragEvents();
+  }
+
+  /* ════════════════════════════════════
+     드래그 앤 드롭 (순위 보존 완벽 가동)
+  ════════════════════════════════════ */
+  function attachDragEvents() {
+    const items = document.querySelectorAll('#reading-list .book-item');
+    let dragSrc  = null;
+
+    items.forEach(item => {
+      item.addEventListener('dragstart', e => {
+        // 순위별 보기 모드일 때만 드래그를 허용합니다 (북마크 탭에서는 순서 변경 차단)
+        if (currentSort !== 'rank') {
+          e.preventDefault();
+          alert('순위 조정은 "순위별" 탭에서만 가능합니다.');
+          return;
+        }
+        dragSrc = item;
+        item.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+
+      item.addEventListener('dragend', () => {
+        item.classList.remove('dragging');
+        document.querySelectorAll('.book-item.drag-over')
+          .forEach(el => el.classList.remove('drag-over'));
+      });
+
+      item.addEventListener('dragover', e => {
+        e.preventDefault();
+        if (item !== dragSrc) item.classList.add('drag-over');
+      });
+
+      item.addEventListener('dragleave', () => {
+        item.classList.remove('drag-over');
+      });
+
+      item.addEventListener('drop', async e => {
+        e.preventDefault();
+        item.classList.remove('drag-over');
+        if (!dragSrc || dragSrc === item) return;
+
+        const fromId  = dragSrc.dataset.id;
+        const toId    = item.dataset.id;
+        const fromIdx = listOrder.findIndex(x => x.id === fromId);
+        const toIdx   = listOrder.findIndex(x => x.id === toId);
+        if (fromIdx < 0 || toIdx < 0) return;
+
+        /* 순서 재배치 */
+        const [moved] = listOrder.splice(fromIdx, 1);
+        listOrder.splice(toIdx, 0, moved);
+
+        // 실시간 화면 반영 및 순위 번호 리렌더링
+        drawList();
+
+        /* 💡 배치 쿼리로 Firestore에 랭킹 전체 영구 저장 */
+        try {
+          await saveReadingOrder(listOrder);
+        } catch (err) {
+          console.error('순위 저장 실패:', err);
+        }
+      });
+    });
+  }
+
+  /* ════════════════════════════════════
+     전역 윈도우 바인딩 (type="module" 필수 작업)
+  ════════════════════════════════════ */
+  window.sortBy = function(btn, type) {
+    document.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentSort = type;
+
+    if (type === 'rank') {
+      listOrder.sort((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity));
+    }
+    drawList();
+  };
+
+  window.handleBookmark = async function(docId, current) {
+    await toggleBookmark(docId, current);
+    const item = listOrder.find(x => x.id === docId);
+    if (item) item.bookmarked = !current;
+    drawList();
+  };
+
+  window.handleRemove = async function(docId) {
+    if (!confirm('독서 목록에서 삭제할까요?')) return;
+    await removeFromReadingList(docId.split('_')[1]); // bookId 추출하여 삭제 전송
+    listOrder = listOrder.filter(x => x.id !== docId);
+    readingList = readingList.filter(x => x.id !== docId);
+    renderStats();
+    drawList();
+  };
+
+  window.selectGenre = function(btn, genre) {
+    selectedGenre = genre;
+    btn.closest('.genre-select-row')
+       .querySelectorAll('.genre-chip')
+       .forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  };
+
+  window.addBook = async function() {
+    const title  = document.getElementById('add-title').value.trim();
+    const author = document.getElementById('add-author').value.trim();
+    if (!title || !author) { alert('제목과 작가를 입력해주세요.'); return; }
+
+    const nextRank = listOrder.length;
+    const bookId   = String(Date.now());
+
+    const btn = document.querySelector('.action-btn.submit');
+    const thumbnail = typeof window.getCurrentThumbnail === 'function' ? window.getCurrentThumbnail() : null; // 💡 [추가] 자동완성에서 선택된 썸네일 URL 가져오기
+    btn.disabled = true; btn.textContent = '등록 중...';
+    try {
+      await addToReadingList({ bookId, title, author, genre: selectedGenre, rank: nextRank, thumbnail: thumbnail });
+      window.clearAdd();
+      await loadReadingList();
+    } catch(e) {
+      alert('추가 실패: ' + e.message);
+    } finally {
+      btn.disabled = false; btn.textContent = '등록';
+    }
+  };
+
+  window.clearAdd = function() {
+    document.getElementById('add-title').value  = '';
+    document.getElementById('add-author').value = '';
+    document.getElementById('add-autocomplete').style.display = 'none';
+  };
+
+  /* ── 제목 자동완성 (booklist) ── */
+  (function() {
+    const titleInput = document.getElementById('add-title');
+    const autoBox    = document.getElementById('add-autocomplete');
+    let searchTimer  = null;
+    let selectedThumbnailUrl = null; // 💡 [추가] 선택된 표지 URL을 임시 기억할 변수
+
+    titleInput.addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      const kw = titleInput.value.trim();
+      if (kw.length < 2) { autoBox.style.display = 'none'; return; }
+
+      searchTimer = setTimeout(async () => {
+        try {
+          const results = [];
+
+          // webtoons 컬렉션 검색
+          const wSnap = await getDocs(collection(db, 'webtoons'));
+          wSnap.forEach(d => {
+            const data = d.data();
+            if ((data.title || '').includes(kw)) {
+              results.push({ id: d.id, title: data.title, author: data.author || '',
+                             genre: '웹툰', thumbnail: data.thumbnail || '' });
+            }
+          });
+
+          // books 컬렉션 검색
+          const bSnap = await getDocs(collection(db, 'books'));
+          bSnap.forEach(d => {
+            const data = d.data();
+            if ((data.title || '').includes(kw)) {
+              results.push({ id: d.id, title: data.title, author: data.author || '',
+                             genre: data.genre || '웹소설', thumbnail: data.thumbnail || '' });
+            }
+          });
+
+          const top = results.slice(0, 5);
+          if (!top.length) { autoBox.style.display = 'none'; return; }
+
+          autoBox.innerHTML = top.map(item => `
+            <div style="padding:10px 12px;border-bottom:1px solid #f0f0f0;cursor:pointer;font-size:13px;"
+                 onmouseover="this.style.background='#f5f5f5'"
+                 onmouseout="this.style.background='#fff'"
+                 data-id="${item.id}"
+                 data-title="${item.title}"
+                 data-author="${item.author}"
+                 data-genre="${item.genre}"
+                 data-thumb="${item.thumbnail}"> <div style="font-weight:700;">${item.title}</div>
+              <div style="font-size:11px;color:var(--text-sub);margin-top:2px;">
+                ${item.author || '작가 미상'} · <span style="color:var(--navy);font-weight:600;">${item.genre}</span>
+              </div>
+            </div>`).join('');
+
+          autoBox.style.display = 'block';
+
+          autoBox.querySelectorAll('[data-title]').forEach(el => {
+            el.addEventListener('click', () => {
+              titleInput.value = el.dataset.title;
+              document.getElementById('add-author').value = el.dataset.author;
+              
+              // 💡 [추가] 자동완성 아이템 클릭 시 원본 bookId와 표지 URL을 변수에 매핑
+              window.selectedBookId = el.dataset.id; 
+              selectedThumbnailUrl = el.dataset.thumb || null;
+
+              // 장르 버튼 동기화
+              const genre = el.dataset.genre;
+              selectedGenre = genre;
+              document.querySelectorAll('.genre-chip').forEach(b => {
+                b.classList.toggle('active', b.textContent === genre);
+              });
+              autoBox.style.display = 'none';
+            });
+          });
+        } catch(e) {
+          console.error('자동완성 실패:', e);
+        }
+      }, 300);
+    });
+
+    document.addEventListener('click', e => {
+      if (!autoBox.contains(e.target) && e.target !== titleInput) {
+        autoBox.style.display = 'none';
+      }
+    });
+
+    // 💡 [추가] 추가 등록 후 폼을 비울 때 썸네일 변수도 초기화되도록 전역 함수 확장 연동
+    const originalClearAdd = window.clearAdd;
+    window.clearAdd = function() {
+      if (typeof originalClearAdd === 'function') originalClearAdd();
+      selectedThumbnailUrl = null;
+      window.selectedBookId = null;
+    };
+
+    // 💡 [핵심 추가] 등록 버튼 클릭 함수 내부에서 thumbnail 주소를 함께 가공하도록 가로채기 설정
+    // (이 스크립트 외부에 등록 버튼 이벤트(window.handleAdd)가 정의되어 있다면 이 변수를 사용할 수 있게 노출해 주어야 합니다.)
+    window.getCurrentThumbnail = () => selectedThumbnailUrl;
+})();
+
+  /* ── 내가 남긴 후기 ── */
+  async function renderMyReviews() {
+    const el = document.getElementById('my-reviews');
+    try {
+      const snap = await getDocs(query(
+        collection(db, 'reviews'),
+        where('uid', '==', user.uid)
+      ));
+
+      if (snap.empty) {
+        el.innerHTML = '<p style="color:var(--text-light);padding:16px 0;">남긴 후기가 없습니다.</p>';
+        return;
+      }
+
+      const reviews = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
+
+      const bookMap = {};
+      await Promise.all([...new Set(reviews.map(r => r.bookId))].map(async bid => {
+        if (bid) bookMap[bid] = await fetchBookById(bid);
+      }));
+
+      el.innerHTML = reviews.map(r =>
+        reviewCardHTML(
+          { ...r, title: bookMap[r.bookId]?.title || r.title || '작품제목' },
+          user.uid
+        )
+      ).join('');
+    } catch(e) {
+      el.innerHTML = '<p style="color:var(--text-light);padding:16px 0;">후기를 불러오지 못했습니다.</p>';
+    }
+  }
+
+  // 데이터 최초 초기화 실행
+  loadReadingList();
+  renderMyReviews();
+</script>
+</body>
+</html>

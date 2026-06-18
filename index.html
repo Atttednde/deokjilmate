@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>덕질메이트</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  /* ── Hero ── */
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 380px;
+  }
+
+  .hero-left {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px 48px;
+    background: var(--bg);
+  }
+
+  .hero-left h1 {
+    font-size: 38px;
+    font-weight: 900;
+    line-height: 1.2;
+    letter-spacing: -1px;
+    margin-bottom: 28px;
+  }
+
+  .hero-right {
+    background: var(--navy);
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  .hero-right h2 {
+    color: #fff;
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    letter-spacing: -0.5px;
+    width: 100%;
+    text-align: right;
+  }
+
+  /* 모바일 화면 대응: 태그 영역이 검색창 밑으로 내려감 */
+  @media (max-width: 768px) {
+    .hero { grid-template-columns: 1fr; min-height: auto; }
+  }
+
+  .rec-books {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    width: 100%;
+  }
+
+  .book-card-small {
+    background: rgba(255,255,255,0.12);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s, background 0.2s;
+    text-decoration: none;
+  }
+
+  .book-card-small:hover {
+    transform: translateY(-4px);
+    background: rgba(255,255,255,0.22);
+  }
+
+  .book-thumb {
+    width: 100%;
+    aspect-ratio: 3/4;
+    background: #c8cdd4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .book-thumb svg { opacity: 0.5; }
+
+  .book-card-small .book-info { padding: 8px; }
+  .book-card-small .book-genre { font-size: 10px; color: rgba(255,255,255,0.6); margin-bottom: 2px; }
+  .book-card-small .book-title { font-size: 12px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .book-card-small .book-author { font-size: 10px; color: rgba(255,255,255,0.5); }
+
+  /* ── Popular Reviews ── */
+  .section { padding: 40px 32px; }
+
+  .section-title {
+    font-size: 20px;
+    font-weight: 900;
+    margin-bottom: 20px;
+    letter-spacing: -0.5px;
+  }
+
+  .review-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  @media (max-width: 768px) {
+  .review-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+  .review-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 20px;
+    border: 1px solid var(--border);
+  }
+
+  .review-card .work-title { cursor: pointer; }
+  .review-card .work-title:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="logo" href="index.html">덕질메이트</a>
+  <div class="nav-links">
+    <a href="index.html" class="active">검색</a>
+    <a href="booklist.html">독서목록</a>
+    <a href="diary.html">독서록</a>
+    <a href="myreviews.html">내가 남긴 후기</a>
+    <span id="nav-auth"></span>
+  </div>
+</nav>
+
+<!-- TAB BAR -->
+<div class="tab-bar">
+  <button class="active" onclick="switchTab(this)">추천</button>
+  <button onclick="location.href='search_webtoon.html'">웹툰</button>
+  <button onclick="location.href='search.html'">웹소설</button>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-left">
+    <h1>작품을 검색하세요</h1>
+    <div class="search-box">
+      <input type="text" id="search-input" placeholder="작품을 검색하세요" onkeydown="handleKey(event)">
+      <button class="search-btn" onclick="doSearch()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+  <div class="hero-right">
+    <h2>추천 작품</h2>
+    <div class="rec-books" id="rec-books"></div>
+  </div>
+</div>
+
+<!-- POPULAR REVIEWS -->
+<div class="section">
+  <h2 class="section-title">인기있는 후기</h2>
+  <div class="review-grid" id="review-grid"></div>
+</div>
+
+<script type="module">
+  import { onAuthReady, logout } from './auth.js';
+  import {
+    BOOK_SVG_SM, THUMB_UP_SVG, THUMB_DOWN_SVG,
+    renderStars, fetchBooks, fetchBookById,
+  } from './data.js';
+
+  /* ── nav 인증 상태 ── */
+  onAuthReady((user) => {
+    const el = document.getElementById('nav-auth');
+    if (user) {
+      el.innerHTML = `
+        <span style="font-size:15px;font-weight:700;padding:7px 12px;cursor:default;">
+          @${user.displayName || user.email}님
+        </span>
+        <button onclick="window._logout()"
+          style="background:#d0d4da;border:none;border-radius:6px;padding:7px 12px;
+                 font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;">
+          로그아웃
+        </button>`;
+      window._logout = logout;
+    } else {
+      el.innerHTML = `<a href="login.html" class="login-btn"
+        style="font-size:16px;font-weight:700;padding:7px 18px;">로그인</a>`;
+    }
+  });
+
+  /* ── 탭 ── */
+  window.switchTab = function(btn) {
+    document.querySelectorAll('.tab-bar button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  };
+
+  /* ── 검색 이동 ── */
+ window.handleKey = function(e) { if (e.key === 'Enter') window.doSearch(); };
+window.doSearch = async function() {
+  const q = document.getElementById('search-input').value.trim();
+  if (!q) return;
+
+  // 웹툰/웹소설 동시 검색
+  const [webtoons, novels] = await Promise.all([
+    fetchBooks({ query: q, collectionName: 'webtoons' }),
+    fetchBooks({ query: q, collectionName: 'books' })
+  ]);
+
+  // 결과가 있는 쪽으로 이동 (둘 다 있으면 웹툰 우선)
+  if (webtoons.length > 0) {
+    window.location.href = `search_webtoon.html?q=${encodeURIComponent(q)}`;
+  } else if (novels.length > 0) {
+    window.location.href = `search.html?q=${encodeURIComponent(q)}`;
+  } else {
+    // 둘 다 없으면 웹소설 페이지로 (결과 없음 표시)
+    window.location.href = `search.html?q=${encodeURIComponent(q)}`;
+  }
+};
+
+  /* ── 추천 작품: Firestore books에서 최신 4개 ── */
+  async function renderRec() {
+    const recEl = document.getElementById('rec-books');
+    try {
+      const books = await fetchBooks({ limit: 4 });
+      if (!books.length) {
+        recEl.innerHTML = '<p style="color:rgba(255,255,255,0.5);font-size:13px;">작품 데이터를 불러오는 중...</p>';
+        return;
+      }
+      recEl.innerHTML = books.map(b => `
+        <a class="book-card-small" href="detail.html?id=${b.id}">
+          <div class="book-thumb">
+            ${b.thumbnail
+              ? `<img src="${b.thumbnail}" style="width:100%;height:100%;object-fit:cover;">`
+              : BOOK_SVG_SM}
+          </div>
+          <div class="book-info">
+            <div class="book-genre">${b.genre || ''}</div>
+            <div class="book-title">${b.title || ''}</div>
+            <div class="book-author">${b.author || ''}</div>
+          </div>
+        </a>`).join('');
+    } catch(e) {
+      recEl.innerHTML = '<p style="color:rgba(255,255,255,0.5);font-size:13px;">불러오기 실패</p>';
+      console.error('추천 작품 로드 실패:', e);
+    }
+  }
+
+  /* ── 인기 후기: reviews 컬렉션에서 upvotes 높은 순으로 직접 조회 ── */
+  async function renderPopularReviews() {
+    const grid = document.getElementById('review-grid');
+    grid.innerHTML = '<p style="color:var(--text-sub);padding:20px 0;">후기를 불러오는 중...</p>';
+
+    try {
+      const { db }  = await import('./firebase-config.js');
+      const { collection, query, orderBy, limit, getDocs } =
+        await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+
+      /* upvotes 높은 순으로 최대 20개 가져온 뒤
+         작품당 1개만 남겨서 3개 카드 구성
+         (같은 작품 후기가 몰리지 않도록) */
+      const snap = await getDocs(
+        query(collection(db, 'reviews'), orderBy('upvotes', 'desc'), limit(20))
+      );
+
+      if (snap.empty) {
+        grid.innerHTML = '<p style="color:var(--text-light);">아직 등록된 후기가 없습니다.</p>';
+        return;
+      }
+
+      /* 작품당 upvotes 최고 후기 1개씩, 최대 3개 */
+      const seen    = new Set();
+      const topList = [];
+      for (const d of snap.docs) {
+        const r = { id: d.id, ...d.data() };
+        if (!seen.has(r.bookId)) {
+          seen.add(r.bookId);
+          topList.push(r);
+        }
+        if (topList.length >= 3) break;
+      }
+
+      /* 작품 제목 병렬 조회 */
+      const bookMap = {};
+      await Promise.all(topList.map(async r => {
+        if (!bookMap[r.bookId]) {
+          bookMap[r.bookId] = await fetchBookById(r.bookId);
+        }
+      }));
+
+      grid.innerHTML = topList.map(r => {
+        const book = bookMap[r.bookId];
+        const date = r.createdAt?.toDate
+          ? r.createdAt.toDate().toLocaleDateString('ko-KR') : '';
+        return `
+          <div class="review-card">
+            <div class="stars">${renderStars(r.rating || 0)}</div>
+            <div class="work-title"
+                 style="cursor:pointer"
+                 onclick="location.href='detail.html?id=${r.bookId}'">
+              ${book?.title || '작품제목'}
+            </div>
+            <div class="review-content">${r.content}</div>
+            <div class="review-footer">
+              <div class="reviewer">
+                <div class="avatar"></div>
+                <div class="reviewer-info">
+                  <div class="name">${r.username || ''}</div>
+                  <div class="date">${date}</div>
+                </div>
+              </div>
+              <div class="vote-btns">
+                <button class="vote-btn">
+                  ${THUMB_UP_SVG} ${r.upvotes || 0}
+                </button>
+                <button class="vote-btn">
+                  ${THUMB_DOWN_SVG} ${r.downvotes || 0}
+                </button>
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+
+    } catch(e) {
+      grid.innerHTML = '<p style="color:var(--text-sub);">후기를 불러오지 못했습니다.</p>';
+      console.error('인기 후기 로드 실패:', e);
+    }
+  }
+
+  renderRec();
+  renderPopularReviews();
+</script>
+</body>
+</html>

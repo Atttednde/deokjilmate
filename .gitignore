@@ -1,0 +1,14 @@
+node_modules/
+nodejs/
+__pycache__/
+.vscode/
+
+serviceAccountKey.json
+apiserviceAccountKey.json
+webtoon_serviceAccountKey.json
+
+package-lock.json
+yarn.lock
+
+apiserviceAccountKey.json
+webtoon_serviceAccountKey.json
