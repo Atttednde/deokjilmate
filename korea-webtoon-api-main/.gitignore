@@ -1,0 +1,11 @@
+node_modules/
+nodejs/
+__pycache__/
+.vscode/
+serviceAccountKey.json
+apiserviceAccountKey.json
+webtoon_serviceAccountKey.json
+package-lock.json
+yarn.lock
+Data_Crolling/
+korea-webtoon-api-main/
